@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Анализ бэктеста · CSV из TradingView</title>
+<style>
+  :root{
+    --bg:#0d1014; --panel:#14181e; --panel2:#1a2029; --line:#242c37;
+    --ink:#e8ebf0; --muted:#8b94a3; --faint:#5c6573;
+    --gain:#34c79a; --gain-soft:rgba(52,199,154,.14);
+    --loss:#ec6a5a; --loss-soft:rgba(236,106,90,.16);
+    --gold:#d8b25f; --gold-soft:rgba(216,178,95,.12);
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(1200px 600px at 80% -10%,rgba(216,178,95,.05),transparent 60%);}
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 20px 80px}
+  a{color:var(--gold)}
+  /* header */
+  header h1{font-size:26px;font-weight:650;letter-spacing:-.02em;margin:0 0 6px}
+  header .sub{color:var(--muted);max-width:62ch;margin:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--gold);margin:0 0 12px}
+  /* dropzone */
+  .drop{margin-top:28px;border:1.5px dashed var(--line);border-radius:14px;background:var(--panel);
+    padding:34px 24px;text-align:center;transition:.18s;cursor:pointer}
+  .drop:hover,.drop.over{border-color:var(--gold);background:var(--panel2)}
+  .drop .big{font-size:16px;font-weight:600}
+  .drop .small{color:var(--muted);font-size:13.5px;margin-top:6px}
+  .drop .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+  .btn{font-family:var(--sans);font-size:14px;border:1px solid var(--line);background:var(--panel2);
+    color:var(--ink);padding:9px 16px;border-radius:9px;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--gold);color:var(--gold)}
+  .btn.primary{background:var(--gold);color:#1a1407;border-color:var(--gold);font-weight:600}
+  .btn.primary:hover{filter:brightness(1.08);color:#1a1407}
+  input[type=file]{display:none}
+  .hint{margin-top:14px;font-size:13px;color:var(--faint)}
+  .hint summary{cursor:pointer;color:var(--muted)}
+  .hint ol{margin:10px 0 0;padding-left:20px;color:var(--muted);line-height:1.7}
+  .hint code{font-family:var(--mono);background:var(--panel2);padding:1px 6px;border-radius:5px;font-size:12px}
+  .err{margin-top:18px;border:1px solid var(--loss);background:var(--loss-soft);color:var(--ink);
+    padding:14px 16px;border-radius:10px;font-size:14px;display:none}
+  .err code{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  /* results */
+  #results{display:none;margin-top:34px}
+  .verdict{border-radius:14px;padding:22px 24px;border:1px solid var(--line);margin-bottom:24px;
+    display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .verdict.win{background:linear-gradient(100deg,var(--gain-soft),transparent);border-color:rgba(52,199,154,.4)}
+  .verdict.lose{background:linear-gradient(100deg,var(--loss-soft),transparent);border-color:rgba(236,106,90,.4)}
+  .verdict .dot{width:12px;height:12px;border-radius:50%;flex:none}
+  .win .dot{background:var(--gain);box-shadow:0 0 16px var(--gain)}
+  .lose .dot{background:var(--loss);box-shadow:0 0 16px var(--loss)}
+  .verdict .vtitle{font-size:19px;font-weight:650;letter-spacing:-.01em}
+  .verdict .vsub{color:var(--muted);font-size:13.5px;margin-top:2px}
+  .verdict .net{margin-left:auto;text-align:right}
+  .verdict .net .n{font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:-.02em}
+  .verdict .net .l{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  /* cards */
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 16px}
+  .card .l{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .card .v{font-family:var(--mono);font-size:21px;font-weight:600;margin-top:7px;letter-spacing:-.01em}
+  .card .x{font-size:12px;color:var(--faint);margin-top:3px;font-family:var(--mono)}
+  /* panels */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:20px}
+  .panel h2{font-size:14px;font-weight:600;margin:0 0 2px;letter-spacing:.01em}
+  .panel .ph{color:var(--muted);font-size:12.5px;margin:0 0 16px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .two .panel{margin-bottom:0}
+  svg{display:block;width:100%;height:auto}
+  .pos{color:var(--gain)} .neg{color:var(--loss)}
+  /* table */
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
+  th{text-align:right;color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.06em;
+    text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line);font-family:var(--sans)}
+  th:first-child,td:first-child{text-align:left}
+  td{padding:8px 10px;border-bottom:1px solid rgba(36,44,55,.5)}
+  tbody tr:hover{background:var(--panel2)}
+  .tablewrap{max-height:420px;overflow:auto}
+  /* tooltip */
+  #tip{position:fixed;pointer-events:none;background:#05070a;border:1px solid var(--line);
+    border-radius:8px;padding:7px 10px;font-family:var(--mono);font-size:12px;color:var(--ink);
+    opacity:0;transition:opacity .1s;z-index:50;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  .axis{font-family:var(--mono);font-size:11px;fill:var(--faint)}
+  .barlabel{font-family:var(--mono);font-size:10.5px;fill:var(--muted)}
+  footer{margin-top:50px;color:var(--faint);font-size:12.5px;text-align:center;line-height:1.7}
+  @media(max-width:720px){
+    .cards{grid-template-columns:repeat(2,1fr)}
+    .two{grid-template-columns:1fr}
+    .verdict .net{margin-left:0;text-align:left}
+    .wrap{padding:24px 14px 60px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Бэктест · Аналитика</p>
+    <h1>Прибыльна ли стратегия и когда она работала</h1>
+    <p class="sub">Выгрузи из «Тестера стратегий» TradingView список сделок в CSV, перетащи сюда — и увидишь итог, кривую капитала, просадку и разбивку результата по дням недели, месяцам и годам. Файл обрабатывается прямо в браузере, никуда не загружается.</p>
+  </header>
+
+  <div class="drop" id="drop">
+    <div class="big">Перетащи CSV сюда</div>
+    <div class="small">или выбери файл — экспорт списка сделок из TradingView (.csv)</div>
+    <div class="row">
+      <button class="btn primary" id="pick">Выбрать файл</button>
+      <button class="btn" id="demo">Показать на примере</button>
+    </div>
+    <input type="file" id="file" accept=".csv,text/csv">
+  </div>
+
+  <details class="hint">
+    <summary>Как выгрузить CSV из TradingView</summary>
+    <ol>
+      <li>Открой график нужного токена, внизу — вкладка <code>Тестер стратегий</code>.</li>
+      <li>Перейди на вкладку <code>Список сделок</code>.</li>
+      <li>Нажми значок экспорта (стрелка вниз) → <code>Экспорт в CSV</code>.</li>
+      <li>Перетащи полученный файл сюда. Подойдёт и русский, и английский экспорт.</li>
+    </ol>
+  </details>
+
+  <div class="err" id="err"></div>
+
+  <div id="results"></div>
+
+  <footer>
+    Инструмент считает по дате <b>закрытия</b> сделки. Прошлые результаты не гарантируют будущих.<br>
+    Работает офлайн — можно сохранить этот файл и открывать локально.
+  </footer>
+</div>
+<div id="tip"></div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const tip=$('#tip');
+
+/* ---------- parsing ---------- */
+function detectDelimiter(line){
+  const c=(line.match(/,/g)||[]).length, s=(line.match(/;/g)||[]).length, t=(line.match(/\t/g)||[]).length;
+  if(t>=c&&t>=s) return '\t'; if(s>c) return ';'; return ',';
+}
+function parseCSV(text){
+  text=text.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const nl=text.indexOf('\n'); const d=detectDelimiter(nl<0?text:text.slice(0,nl));
+  const rows=[];let row=[],field='',q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){field+='"';i++;} else q=false;} else field+=ch; }
+    else{ if(ch==='"')q=true; else if(ch===d){row.push(field);field='';}
+      else if(ch==='\n'){row.push(field);rows.push(row);row=[];field='';} else field+=ch; }
+  }
+  if(field.length||row.length){row.push(field);rows.push(row);}
+  const headers=(rows.shift()||[]).map(h=>String(h).trim());
+  return {headers,rows:rows.filter(r=>r.some(c=>String(c).trim()!==''))};
+}
+function num(v){ if(v==null)return NaN; let s=String(v).trim(); if(s==='')return NaN;
+  s=s.replace(/[\u2212]/g,'-'); const neg=/^\(.*\)$/.test(s); if(neg)s=s.replace(/[()]/g,'');
+  s=s.replace(/[^0-9,.\-]/g,'');
+  if(s.includes(',')&&s.includes('.')) s=s.replace(/,/g,'');
+  else if(s.includes(',')) s=s.replace(',','.');
+  let n=parseFloat(s); if(isNaN(n))return NaN; if(neg)n=-Math.abs(n); return n;
+}
+function parseDate(v){ if(!v)return null; const s=String(v).trim(); if(!s)return null; let m;
+  if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/)))
+    return new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+(m[6]||0));
+  if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return new Date(+m[1],+m[2]-1,+m[3]);
+  if((m=s.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})(?:[ ,]+(\d{1,2}):(\d{2}))?/))){
+    let dd=+m[1],mm=+m[2]; if(mm>12&&dd<=12)[dd,mm]=[mm,dd];
+    return new Date(+m[3],mm-1,dd,+(m[4]||0),+(m[5]||0));
+  }
+  const d=new Date(s); return isNaN(d)?null:d;
+}
+function findCol(h,any,not){not=not||[];
+  for(let i=0;i<h.length;i++){const x=h[i].toLowerCase();
+    if(any.some(k=>x.includes(k))&&!not.some(k=>x.includes(k)))return i;}
+  return -1;
+}
+function findPct(h){const prof=['p&l','pnl','profit','прибыл','п&l','пр/у','пр./у','п/у','убыт'];
+  for(let i=0;i<h.length;i++){const x=h[i].toLowerCase();
+    if(x.includes('%')&&prof.some(k=>x.includes(k))&&!/cumul|совок|кумул|накоп/.test(x))return i;}
+  return -1;
+}
+function mapColumns(h){
+  return {
+    tradeNum:findCol(h,['trade #','trade#','сделк','номер сдел','trade number']),
+    type:findCol(h,['type','тип']),
+    datetime:findCol(h,['date/time','date','time','дата','время']),
+    pnlAbs:findCol(h,['net p&l','net pnl','profit','прибыл','п&l','пр/у','пр./у','pnl','п/у'],['%','cumul','совок','кумул','накоп','откл']),
+    pnlPct:findPct(h),
+    cumAbs:findCol(h,['cumulative p&l','cumulative','совокуп','кумул','накоп'],['%']),
+  };
+}
+const isExit=t=>{t=(t||'').toLowerCase();return t.includes('exit')||t.includes('close')||t.includes('выход')||t.includes('закры');};
+
+function buildTrades(rows,c){
+  const out=[]; const g=(r,i)=>i>=0?r[i]:undefined;
+  const usePct = c.pnlAbs<0 && c.pnlPct>=0;          // только % если нет абсолютной прибыли
+  const pcol = usePct?c.pnlPct:c.pnlAbs;
+  if(c.tradeNum>=0){
+    const groups=new Map();
+    for(const r of rows){const k=g(r,c.tradeNum);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);}
+    for(const grp of groups.values()){
+      let ex=grp.find(r=>isExit(g(r,c.type)));
+      if(!ex)ex=grp.find(r=>!isNaN(num(g(r,pcol))));
+      if(!ex)ex=grp[grp.length-1];
+      const pnl=num(g(ex,pcol)); const dt=parseDate(g(ex,c.datetime));
+      if(!isNaN(pnl)&&dt)out.push({pnl,date:dt,cum:num(g(ex,c.cumAbs))});
+    }
+  } else {
+    for(const r of rows){const pnl=num(g(r,pcol)); const dt=parseDate(g(r,c.datetime));
+      if(!isNaN(pnl)&&dt)out.push({pnl,date:dt,cum:num(g(r,c.cumAbs))});}
+  }
+  out.sort((a,b)=>a.date-b.date);
+  return {trades:out,usePct};
+}
+
+/* ---------- stats ---------- */
+function compute(trades){
+  let net=0,gp=0,gl=0,w=0,l=0,maxW=-Infinity,maxL=Infinity,ws=0,ls=0,bestWs=0,bestLs=0;
+  let eq=0,peak=0,maxDD=0; const curve=[];
+  for(const t of trades){
+    net+=t.pnl;
+    if(t.pnl>=0){gp+=t.pnl;w++;maxW=Math.max(maxW,t.pnl);ws++;ls=0;bestWs=Math.max(bestWs,ws);}
+    else{gl+=t.pnl;l++;maxL=Math.min(maxL,t.pnl);ls++;ws=0;bestLs=Math.max(bestLs,ls);}
+    eq+=t.pnl;peak=Math.max(peak,eq);maxDD=Math.min(maxDD,eq-peak);curve.push(eq);
+  }
+  const n=trades.length;
+  return {net,gp,gl,pf:gl!==0?gp/Math.abs(gl):(gp>0?Infinity:0),n,w,l,
+    wr:n?w/n*100:0,avg:n?net/n:0,avgW:w?gp/w:0,avgL:l?gl/l:0,
+    maxW:isFinite(maxW)?maxW:0,maxL:isFinite(maxL)?maxL:0,maxDD,curve,bestWs,bestLs};
+}
+function groupBy(trades,keyFn,size){
+  const a=Array.from({length:size},()=>({sum:0,n:0,w:0}));
+  for(const t of trades){const k=keyFn(t.date); a[k].sum+=t.pnl; a[k].n++; if(t.pnl>=0)a[k].w++;}
+  return a;
+}
+function groupYears(trades){
+  const m=new Map();
+  for(const t of trades){const y=t.date.getFullYear(); if(!m.has(y))m.set(y,{sum:0,n:0,w:0,key:y}); const o=m.get(y);o.sum+=t.pnl;o.n++;if(t.pnl>=0)o.w++;}
+  return Array.from(m.values()).sort((a,b)=>a.key-b.key);
+}
+
+/* ---------- formatting ---------- */
+let UNIT='';
+const grp=n=>n.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});
+function money(n,sign){if(!isFinite(n))return '∞';const s=(sign&&n>0?'+':'')+grp(n);return s+(UNIT?' '+UNIT:'');}
+const cls=n=>n>=0?'pos':'neg';
+const WD=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const MO=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+
+/* ---------- charts ---------- */
+function equityChart(curve){
+  const W=1000,H=320,pl=58,pr=20,pt=20,pb=28;
+  const iw=W-pl-pr,ih=H-pt-pb,n=curve.length;
+  const vals=curve.concat([0]); let lo=Math.min(...vals),hi=Math.max(...vals);
+  if(lo===hi){lo-=1;hi+=1;} const pad=(hi-lo)*0.08; lo-=pad;hi+=pad;
+  const X=i=>pl+(n<=1?iw/2:i/(n-1)*iw);
+  const Y=v=>pt+ih-(v-lo)/(hi-lo)*ih;
+  // peak line for drawdown shading
+  const peak=[];let pk=0;for(const v of curve){pk=Math.max(pk,v);peak.push(pk);}
+  let area='M'+X(0)+' '+Y(curve[0]);
+  for(let i=1;i<n;i++)area+=' L'+X(i)+' '+Y(curve[i]);
+  let line=area;
+  area+=' L'+X(n-1)+' '+Y(lo)+' L'+X(0)+' '+Y(lo)+' Z';
+  // drawdown band between peak and equity
+  let dd='M'+X(0)+' '+Y(peak[0]);
+  for(let i=1;i<n;i++)dd+=' L'+X(i)+' '+Y(peak[i]);
+  for(let i=n-1;i>=0;i--)dd+=' L'+X(i)+' '+Y(curve[i]);
+  dd+=' Z';
+  // gridlines
+  let grid='';const steps=4;
+  for(let s=0;s<=steps;s++){const v=lo+(hi-lo)*s/steps;const y=Y(v);
+    grid+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="var(--line)" stroke-width="1" opacity=".5"/>`+
+          `<text class="axis" x="${pl-8}" y="${y+3}" text-anchor="end">${Math.round(v).toLocaleString('ru-RU')}</text>`;}
+  const zeroY=Y(0);
+  const last=curve[n-1];
+  // hover points (invisible wide rects) – built as data on a single overlay
+  return `<svg viewBox="0 0 ${W} ${H}" id="eqsvg" data-n="${n}" data-pl="${pl}" data-iw="${iw}">
+    <defs><linearGradient id="eqg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--gold)" stop-opacity=".22"/>
+      <stop offset="1" stop-color="var(--gold)" stop-opacity="0"/></linearGradient></defs>
+    ${grid}
+    <line x1="${pl}" y1="${zeroY}" x2="${W-pr}" y2="${zeroY}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 4" opacity=".6"/>
+    <path d="${dd}" fill="var(--loss-soft)"/>
+    <path d="${area}" fill="url(#eqg)"/>
+    <path d="${line}" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${X(n-1)}" cy="${Y(last)}" r="3.5" fill="var(--gold)"/>
+    <rect id="eqhit" x="${pl}" y="${pt}" width="${iw}" height="${ih}" fill="transparent"/>
+    <line id="eqcur" x1="0" y1="${pt}" x2="0" y2="${pt+ih}" stroke="var(--gold)" stroke-width="1" opacity="0"/>
+  </svg>`;
+}
+
+function divergingBars(items,labels,fmtLabel){
+  const n=items.length;
+  const W=Math.max(420,n*60),H=240,pt=24,pb=42;
+  const bw=W/n, ih=H-pt-pb, mid=pt+ih/2, halfPx=ih/2-6;
+  const maxAbs=Math.max(1,...items.map(d=>Math.abs(d.sum)));
+  let bars='';
+  for(let i=0;i<n;i++){const d=items[i];
+    const h=Math.abs(d.sum)/maxAbs*halfPx;
+    const x=i*bw+bw*0.18, w=bw*0.64;
+    const up=d.sum>=0;
+    const y=up?mid-h:mid;
+    const col=up?'var(--gain)':'var(--loss)';
+    const lbl=labels[i];
+    const valTxt=(d.sum>=0?'+':'')+Math.round(d.sum).toLocaleString('ru-RU');
+    bars+=`<rect class="bar" x="${x}" y="${y}" width="${w}" height="${Math.max(h,d.n?1:0)}" rx="3" fill="${col}" opacity="${d.n?0.92:0.18}"
+      data-l="${lbl}" data-v="${valTxt}" data-n="${d.n} сд. · ${d.n?Math.round(d.w/d.n*100):0}% прибыль."></rect>`;
+    if(d.n)bars+=`<text class="barlabel" x="${x+w/2}" y="${up?y-5:y+h+13}" text-anchor="middle" fill="${col}">${valTxt}</text>`;
+    bars+=`<text class="axis" x="${x+w/2}" y="${H-22}" text-anchor="middle">${lbl}</text>`;
+    bars+=`<text class="axis" x="${x+w/2}" y="${H-8}" text-anchor="middle" opacity=".7">${d.n||''}</text>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}">
+    <line x1="0" y1="${mid}" x2="${W}" y2="${mid}" stroke="var(--line)" stroke-width="1.5"/>
+    ${bars}</svg>`;
+}
+
+/* tooltip wiring */
+function wireBars(root){
+  root.querySelectorAll('.bar').forEach(b=>{
+    b.addEventListener('mousemove',e=>{
+      tip.innerHTML=`<b>${b.dataset.l}</b> &nbsp; <span class="${b.dataset.v.startsWith('-')?'neg':'pos'}">${b.dataset.v}${UNIT?' '+UNIT:''}</span><br><span style="color:var(--muted)">${b.dataset.n}</span>`;
+      tip.style.opacity=1; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px';
+    });
+    b.addEventListener('mouseleave',()=>tip.style.opacity=0);
+  });
+}
+function wireEquity(curve,dates){
+  const svg=$('#eqsvg'); if(!svg)return;
+  const hit=$('#eqhit'),cur=$('#eqcur');
+  const pl=+svg.dataset.pl,iw=+svg.dataset.iw,n=+svg.dataset.n;
+  hit.addEventListener('mousemove',e=>{
+    const r=svg.getBoundingClientRect(); const scale=1000/r.width;
+    const px=(e.clientX-r.left)*scale;
+    let i=Math.round((px-pl)/(iw/(n-1||1))); i=Math.max(0,Math.min(n-1,i));
+    const x=pl+(n<=1?iw/2:i/(n-1)*iw);
+    cur.setAttribute('x1',x);cur.setAttribute('x2',x);cur.style.opacity=.5;
+    const v=curve[i];
+    tip.innerHTML=`<span style="color:var(--muted)">${dates[i]}</span><br>Капитал: <b class="${v>=0?'pos':'neg'}">${(v>=0?'+':'')+grp(v)}${UNIT?' '+UNIT:''}</b>`;
+    tip.style.opacity=1; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px';
+  });
+  hit.addEventListener('mouseleave',()=>{tip.style.opacity=0;cur.style.opacity=0;});
+}
+
+/* ---------- render ---------- */
+function render(trades,usePct){
+  UNIT = usePct ? '%' : '';
+  const s=compute(trades);
+  const win=s.net>=0;
+  const wd=groupBy(trades,d=>(d.getDay()+6)%7,7);     // Пн..Вс
+  const mo=groupBy(trades,d=>d.getMonth(),12);
+  const yr=groupYears(trades);
+  const intraday=trades.some(t=>t.date.getHours()!==0||t.date.getMinutes()!==0);
+  const hr=intraday?groupBy(trades,d=>d.getHours(),24):null;
+  const dates=trades.map(t=>t.date.toLocaleDateString('ru-RU')+' '+(intraday?t.date.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):''));
+
+  const card=(l,v,x,c)=>`<div class="card"><div class="l">${l}</div><div class="v ${c||''}">${v}</div>${x?`<div class="x">${x}</div>`:''}</div>`;
+  const period=trades.length?trades[0].date.toLocaleDateString('ru-RU')+' — '+trades[trades.length-1].date.toLocaleDateString('ru-RU'):'';
+
+  let html=`
+  <div class="verdict ${win?'win':'lose'}">
+    <div class="dot"></div>
+    <div>
+      <div class="vtitle">${win?'Стратегия прибыльна на истории':'Стратегия убыточна на истории'}</div>
+      <div class="vsub">${s.n} сделок · ${period} · профит-фактор ${isFinite(s.pf)?s.pf.toFixed(2):'∞'}</div>
+    </div>
+    <div class="net">
+      <div class="l">Итог</div>
+      <div class="n ${cls(s.net)}">${money(s.net,true)}</div>
+    </div>
+  </div>
+
+  <div class="cards">
+    ${card('Винрейт',s.wr.toFixed(1)+'%',`${s.w} приб. / ${s.l} убыт.`)}
+    ${card('Профит-фактор',isFinite(s.pf)?s.pf.toFixed(2):'∞','прибыль ÷ убыток')}
+    ${card('Макс. просадка',money(s.maxDD),'пик → дно',cls(s.maxDD||-1))}
+    ${card('Средняя сделка',money(s.avg,true),'',cls(s.avg))}
+    ${card('Средний профит',money(s.avgW,true),`лучшая ${money(s.maxW,true)}`,'pos')}
+    ${card('Средний убыток',money(s.avgL,true),`худшая ${money(s.maxL,true)}`,'neg')}
+    ${card('Серия побед',s.bestWs+' подряд','макс. серия','pos')}
+    ${card('Серия убытков',s.bestLs+' подряд','макс. серия','neg')}
+  </div>
+
+  <div class="panel">
+    <h2>Кривая капитала</h2>
+    <p class="ph">Накопленный результат по сделкам. Красным закрашена просадка от достигнутого пика.</p>
+    ${equityChart(s.curve)}
+  </div>
+
+  <div class="two">
+    <div class="panel">
+      <h2>По дням недели</h2>
+      <p class="ph">Сумма P&L · число сделок под осью.</p>
+      ${divergingBars(wd,WD)}
+    </div>
+    <div class="panel">
+      <h2>По месяцам года</h2>
+      <p class="ph">Сводно за все годы.</p>
+      ${divergingBars(mo,MO)}
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>По годам</h2>
+    <p class="ph">В какие годы стратегия зарабатывала.</p>
+    ${divergingBars(yr,yr.map(y=>y.key))}
+  </div>
+  ${hr?`<div class="panel"><h2>По часам входа в рынок</h2><p class="ph">Время локальное по данным файла.</p>${divergingBars(hr,Array.from({length:24},(_,i)=>i))}</div>`:''}
+
+  <div class="panel">
+    <h2>Сделки <span style="color:var(--faint);font-weight:400">(последние 50)</span></h2>
+    <div class="tablewrap">
+      <table><thead><tr><th>Дата закрытия</th><th>P&L</th><th>Капитал</th></tr></thead><tbody>
+      ${trades.slice(-50).reverse().map((t,i,arr)=>{
+        const eqAt=s.curve[trades.length-1-i];
+        return `<tr><td>${t.date.toLocaleDateString('ru-RU')}${intraday?' '+t.date.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):''}</td>
+          <td class="${cls(t.pnl)}">${money(t.pnl,true)}</td>
+          <td class="${cls(eqAt)}">${money(eqAt)}</td></tr>`;}).join('')}
+      </tbody></table>
+    </div>
+  </div>`;
+
+  const res=$('#results'); res.innerHTML=html; res.style.display='block';
+  wireEquity(s.curve,dates);
+  wireBars(res);
+  res.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ---------- file handling ---------- */
+function showError(msg,headers){
+  const e=$('#err');
+  e.innerHTML=msg+(headers?`<br><br>Найдены столбцы: <code>${headers.map(h=>h||'∅').join(' · ')}</code>`:'');
+  e.style.display='block'; $('#results').style.display='none';
+}
+function handle(text){
+  $('#err').style.display='none';
+  let parsed; try{parsed=parseCSV(text);}catch(_){return showError('Не удалось прочитать файл как CSV.');}
+  const {headers,rows}=parsed;
+  if(!rows.length)return showError('В файле нет строк с данными.',headers);
+  const cols=mapColumns(headers);
+  if(cols.pnlAbs<0&&cols.pnlPct<0)
+    return showError('Не нашёл столбец с прибылью по сделке. Похоже, это не «Список сделок» из TradingView, а другой отчёт. Выгрузи именно вкладку «Список сделок» → «Экспорт в CSV».',headers);
+  if(cols.datetime<0)
+    return showError('Не нашёл столбец с датой/временем сделки.',headers);
+  const {trades,usePct}=buildTrades(rows,cols);
+  if(!trades.length)return showError('Не удалось собрать ни одной завершённой сделки из файла.',headers);
+  render(trades,usePct);
+}
+function readFile(f){const r=new FileReader();r.onload=e=>handle(e.target.result);r.onerror=()=>showError('Ошибка чтения файла.');r.readAsText(f,'utf-8');}
+
+const drop=$('#drop'),file=$('#file');
+$('#pick').addEventListener('click',e=>{e.stopPropagation();file.click();});
+drop.addEventListener('click',()=>file.click());
+file.addEventListener('change',e=>{if(e.target.files[0])readFile(e.target.files[0]);});
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)readFile(f);});
+
+/* demo data */
+$('#demo').addEventListener('click',e=>{e.stopPropagation();
+  let rng=42;const rnd=()=>{rng=(rng*1103515245+12345)&0x7fffffff;return rng/0x7fffffff;};
+  let lines=['"Trade #","Type","Date/Time","Net P&L USDT"'];
+  const start=new Date(2023,0,5),N=180;let tn=N;
+  for(let i=0;i<N;i++){
+    const d=new Date(start.getTime()+i*(1.6*24*3600*1000)+Math.floor(rnd()*8)*3600*1000);
+    const dow=(d.getDay()+6)%7; const mon=d.getMonth();
+    let edge=0.55; if(dow===0||dow===2)edge+=0.18; if(dow===4)edge-=0.18; if(mon>=9)edge+=0.1;
+    const winT=rnd()<edge;
+    const pnl=winT?(8+rnd()*40):-(6+rnd()*28);
+    const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':00';
+    lines.push(`"${tn}","Exit Long","${iso}","${pnl.toFixed(2)}"`);
+    lines.push(`"${tn}","Entry Long","${iso}",""`); tn--;
+  }
+  handle(lines.join('\n'));
+});
+</script>
+</body>
+</html>
