@@ -48,6 +48,14 @@
   .err code{font-family:var(--mono);font-size:12px;color:var(--muted)}
   /* results */
   #results{display:none;margin-top:34px}
+  /* unit toggle */
+  .unitbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-bottom:14px}
+  .unitbar .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+  .seg-btn{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--muted);background:transparent;
+    border:0;padding:7px 18px;border-radius:7px;cursor:pointer;transition:.15s;min-width:62px}
+  .seg-btn:hover{color:var(--ink)}
+  .seg-btn.on{background:var(--gold);color:#1a1407}
   .verdict{border-radius:14px;padding:22px 24px;border:1px solid var(--line);margin-bottom:24px;
     display:flex;align-items:center;gap:20px;flex-wrap:wrap}
   .verdict.win{background:linear-gradient(100deg,var(--gain-soft),transparent);border-color:rgba(52,199,154,.4)}
@@ -198,26 +206,38 @@ function mapColumns(h){
 }
 const isExit=t=>{t=(t||'').toLowerCase();return t.includes('exit')||t.includes('close')||t.includes('выход')||t.includes('закры');};
 
+/* определить валюту из заголовка абсолютной прибыли (USDT, USD, BTC…) */
+function detectUnit(h){
+  const m=String(h||'').match(/\b(USDT|USDC|BUSD|USD|EUR|GBP|JPY|BTC|ETH)\b/i);
+  return m?m[1].toUpperCase():'';
+}
+
 function buildTrades(rows,c){
   const out=[]; const g=(r,i)=>i>=0?r[i]:undefined;
-  const usePct = c.pnlAbs<0 && c.pnlPct>=0;          // только % если нет абсолютной прибыли
-  const pcol = usePct?c.pnlPct:c.pnlAbs;
+  const hasAbsCol=c.pnlAbs>=0, hasPctCol=c.pnlPct>=0;
+  const detectCol = hasAbsCol ? c.pnlAbs : c.pnlPct;   // по этому столбцу ищем строку выхода
+  const pick=r=>({
+    pnlAbs: hasAbsCol?num(g(r,c.pnlAbs)):NaN,
+    pnlPct: hasPctCol?num(g(r,c.pnlPct)):NaN,
+  });
   if(c.tradeNum>=0){
     const groups=new Map();
     for(const r of rows){const k=g(r,c.tradeNum);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);}
     for(const grp of groups.values()){
       let ex=grp.find(r=>isExit(g(r,c.type)));
-      if(!ex)ex=grp.find(r=>!isNaN(num(g(r,pcol))));
+      if(!ex)ex=grp.find(r=>!isNaN(num(g(r,detectCol))));
       if(!ex)ex=grp[grp.length-1];
-      const pnl=num(g(ex,pcol)); const dt=parseDate(g(ex,c.datetime));
-      if(!isNaN(pnl)&&dt)out.push({pnl,date:dt,cum:num(g(ex,c.cumAbs))});
+      const p=pick(ex); const dt=parseDate(g(ex,c.datetime));
+      if(dt&&(!isNaN(p.pnlAbs)||!isNaN(p.pnlPct)))out.push({...p,date:dt,cum:num(g(ex,c.cumAbs))});
     }
   } else {
-    for(const r of rows){const pnl=num(g(r,pcol)); const dt=parseDate(g(r,c.datetime));
-      if(!isNaN(pnl)&&dt)out.push({pnl,date:dt,cum:num(g(r,c.cumAbs))});}
+    for(const r of rows){const p=pick(r); const dt=parseDate(g(r,c.datetime));
+      if(dt&&(!isNaN(p.pnlAbs)||!isNaN(p.pnlPct)))out.push({...p,date:dt,cum:num(g(r,c.cumAbs))});}
   }
   out.sort((a,b)=>a.date-b.date);
-  return {trades:out,usePct};
+  const hasAbs=out.some(t=>!isNaN(t.pnlAbs));
+  const hasPct=out.some(t=>!isNaN(t.pnlPct));
+  return {trades:out,hasAbs,hasPct};
 }
 
 /* ---------- stats ---------- */
@@ -348,9 +368,19 @@ function wireEquity(curve,dates){
   hit.addEventListener('mouseleave',()=>{tip.style.opacity=0;cur.style.opacity=0;});
 }
 
+/* ---------- state ---------- */
+let STATE=null;   // {trades, hasAbs, hasPct, mode:'abs'|'pct', absUnit}
+
+function setMode(m){ if(!STATE||STATE.mode===m)return; STATE.mode=m; render(false); }
+
 /* ---------- render ---------- */
-function render(trades,usePct){
-  UNIT = usePct ? '%' : '';
+function render(scroll){
+  const {trades:ALL,hasAbs,hasPct,mode,absUnit}=STATE;
+  const field = mode==='pct' ? 'pnlPct' : 'pnlAbs';
+  UNIT = mode==='pct' ? '%' : (absUnit||'');
+  // проекция сделок на выбранные единицы
+  const trades = ALL.filter(t=>!isNaN(t[field])).map(t=>({pnl:t[field],date:t.date,cum:t.cum}));
+
   const s=compute(trades);
   const win=s.net>=0;
   const wd=groupBy(trades,d=>(d.getDay()+6)%7,7);     // Пн..Вс
@@ -363,7 +393,18 @@ function render(trades,usePct){
   const card=(l,v,x,c)=>`<div class="card"><div class="l">${l}</div><div class="v ${c||''}">${v}</div>${x?`<div class="x">${x}</div>`:''}</div>`;
   const period=trades.length?trades[0].date.toLocaleDateString('ru-RU')+' — '+trades[trades.length-1].date.toLocaleDateString('ru-RU'):'';
 
+  // переключатель единиц — показываем только если доступны и USD, и %
+  const toggle = (hasAbs&&hasPct) ? `
+  <div class="unitbar">
+    <span class="lbl">Единицы</span>
+    <div class="seg" role="group" aria-label="Единицы результата">
+      <button class="seg-btn ${mode==='abs'?'on':''}" data-mode="abs" type="button">${absUnit||'USD'}</button>
+      <button class="seg-btn ${mode==='pct'?'on':''}" data-mode="pct" type="button">%</button>
+    </div>
+  </div>` : '';
+
   let html=`
+  ${toggle}
   <div class="verdict ${win?'win':'lose'}">
     <div class="dot"></div>
     <div>
@@ -427,9 +468,10 @@ function render(trades,usePct){
   </div>`;
 
   const res=$('#results'); res.innerHTML=html; res.style.display='block';
+  res.querySelectorAll('.seg-btn').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
   wireEquity(s.curve,dates);
   wireBars(res);
-  res.scrollIntoView({behavior:'smooth',block:'start'});
+  if(scroll!==false) res.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 /* ---------- file handling ---------- */
@@ -448,9 +490,11 @@ function handle(text){
     return showError('Не нашёл столбец с прибылью по сделке. Похоже, это не «Список сделок» из TradingView, а другой отчёт. Выгрузи именно вкладку «Список сделок» → «Экспорт в CSV».',headers);
   if(cols.datetime<0)
     return showError('Не нашёл столбец с датой/временем сделки.',headers);
-  const {trades,usePct}=buildTrades(rows,cols);
+  const {trades,hasAbs,hasPct}=buildTrades(rows,cols);
   if(!trades.length)return showError('Не удалось собрать ни одной завершённой сделки из файла.',headers);
-  render(trades,usePct);
+  const absUnit = cols.pnlAbs>=0 ? detectUnit(headers[cols.pnlAbs]) : '';
+  STATE={trades,hasAbs,hasPct,mode:hasAbs?'abs':'pct',absUnit};
+  render(true);
 }
 function readFile(f){const r=new FileReader();r.onload=e=>handle(e.target.result);r.onerror=()=>showError('Ошибка чтения файла.');r.readAsText(f,'utf-8');}
 
@@ -465,7 +509,7 @@ drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)readFile(f
 /* demo data */
 $('#demo').addEventListener('click',e=>{e.stopPropagation();
   let rng=42;const rnd=()=>{rng=(rng*1103515245+12345)&0x7fffffff;return rng/0x7fffffff;};
-  let lines=['"Trade #","Type","Date/Time","Net P&L USDT"'];
+  let lines=['"Trade #","Type","Date/Time","Net P&L USDT","P&L %"'];
   const start=new Date(2023,0,5),N=180;let tn=N;
   for(let i=0;i<N;i++){
     const d=new Date(start.getTime()+i*(1.6*24*3600*1000)+Math.floor(rnd()*8)*3600*1000);
@@ -473,9 +517,10 @@ $('#demo').addEventListener('click',e=>{e.stopPropagation();
     let edge=0.55; if(dow===0||dow===2)edge+=0.18; if(dow===4)edge-=0.18; if(mon>=9)edge+=0.1;
     const winT=rnd()<edge;
     const pnl=winT?(8+rnd()*40):-(6+rnd()*28);
+    const pct=pnl/4 + (rnd()-0.5)*1.2;   // правдоподобный % к депозиту
     const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':00';
-    lines.push(`"${tn}","Exit Long","${iso}","${pnl.toFixed(2)}"`);
-    lines.push(`"${tn}","Entry Long","${iso}",""`); tn--;
+    lines.push(`"${tn}","Exit Long","${iso}","${pnl.toFixed(2)}","${pct.toFixed(2)}"`);
+    lines.push(`"${tn}","Entry Long","${iso}","",""`); tn--;
   }
   handle(lines.join('\n'));
 });
