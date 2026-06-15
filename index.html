@@ -23,8 +23,7 @@
   a{color:var(--gold)}
   header h1{font-size:26px;font-weight:650;letter-spacing:-.02em;margin:0 0 6px}
   header .sub{color:var(--muted);max-width:62ch;margin:0}
-  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--gold);margin:0 0 12px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin:0 0 12px}
   /* dropzone */
   .drop{margin-top:28px;border:1.5px dashed var(--line);border-radius:14px;background:var(--panel);
     padding:34px 24px;text-align:center;transition:.18s;cursor:pointer}
@@ -48,7 +47,6 @@
   .err code{font-family:var(--mono);font-size:12px;color:var(--muted)}
   /* results */
   #results{display:none;margin-top:30px}
-  /* toolbar: tabs + unit toggle + reset */
   .toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
     border-bottom:1px solid var(--line);margin-bottom:18px}
   .tabs{display:inline-flex;gap:2px}
@@ -86,7 +84,7 @@
   .verdict .net .n{font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:-.02em}
   .verdict .net .l{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
   /* cards */
-  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 16px}
   .card .l{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
   .card .v{font-family:var(--mono);font-size:21px;font-weight:600;margin-top:7px;letter-spacing:-.01em}
@@ -97,25 +95,65 @@
   .panel .ph{color:var(--muted);font-size:12.5px;margin:0 0 16px}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
   .two .panel{margin-bottom:0}
-  .empty{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:48px 22px;
-    text-align:center;color:var(--muted)}
+  .empty{background:var(--panel2);border:1px dashed var(--line);border-radius:12px;padding:34px 22px;text-align:center;color:var(--muted)}
   svg{display:block;width:100%;height:auto}
   .pos{color:var(--gain)} .neg{color:var(--loss)}
+  /* distribution (donut) */
+  .donutwrap{display:flex;justify-content:center;margin:6px 0 4px}
+  .distcards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+  .distcard{border-radius:12px;padding:16px 12px;text-align:center;border:1px solid var(--line)}
+  .distcard.win{background:var(--gain-soft);border-color:rgba(52,199,154,.3)}
+  .distcard.lose{background:var(--loss-soft);border-color:rgba(236,106,90,.3)}
+  .distcard .dn{font-family:var(--mono);font-size:30px;font-weight:700;line-height:1}
+  .distcard.win .dn{color:var(--gain)} .distcard.lose .dn{color:var(--loss)}
+  .distcard .dl{color:var(--muted);font-size:13px;margin-top:4px}
+  .distcard .da{font-size:13px;margin-top:8px;font-family:var(--mono)}
+  /* long vs short */
+  .lshead{display:flex;justify-content:space-between;color:var(--muted);font-size:13.5px;margin:4px 0 8px}
+  .lsbar{height:10px;border-radius:5px;overflow:hidden;background:var(--loss);display:flex}
+  .lsfill{height:100%;background:var(--gain)}
+  .lsrows{margin-top:10px}
+  .lsrow{display:flex;justify-content:space-between;align-items:center;padding:11px 2px;border-bottom:1px solid var(--line);font-size:14px}
+  .lsrow:last-child{border-bottom:0}
+  .lsrow span{color:var(--muted)}
+  .lsrow b{font-family:var(--mono);font-weight:600}
+  /* heatmap / pivot */
+  .calbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .viewseg{display:inline-flex;gap:2px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:3px;flex-wrap:wrap}
+  .vbtn{font-family:var(--sans);font-size:13px;color:var(--muted);background:transparent;border:0;padding:6px 12px;border-radius:7px;cursor:pointer;transition:.15s}
+  .vbtn:hover{color:var(--ink)}
+  .vbtn.on{background:var(--gold);color:#1a1407;font-weight:600}
+  .scope{display:inline-flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+  .scbtn{font-family:var(--sans);font-size:12.5px;color:var(--muted);background:transparent;border:1px solid var(--line);padding:5px 12px;border-radius:7px;cursor:pointer;transition:.15s}
+  .scbtn:hover{color:var(--ink)}
+  .scbtn.on{background:var(--gold-soft);color:var(--gold);border-color:var(--gold)}
+  .heatwrap{overflow-x:auto}
+  table.heat{border-collapse:separate;border-spacing:4px;font-family:var(--mono);font-size:12.5px;width:100%}
+  table.heat th{background:transparent;border:0;position:static;color:var(--muted);font-weight:500;
+    font-family:var(--sans);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:4px 6px;text-align:center}
+  table.heat th.rowh{text-align:left;white-space:nowrap}
+  table.heat th.sigma{color:var(--gold)}
+  td.hc{padding:9px 8px;text-align:center;border-radius:6px;color:var(--ink);font-weight:600;min-width:52px;white-space:nowrap;cursor:default}
+  td.hc.empty{color:var(--faint);font-weight:400;background:var(--panel2)}
+  tr.sigrow td.hc,td.hc.tot{font-weight:700}
+  table.heat tbody tr:hover{background:transparent}
+  .legend{display:flex;align-items:center;gap:16px;justify-content:center;margin:4px 0 12px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+  .legend .sw{display:inline-flex;align-items:center;gap:6px}
+  .legend .box{width:14px;height:14px;border-radius:3px;display:inline-block}
+  .gradbar{width:150px;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--loss),#3a3f48,var(--gain))}
   /* table */
   table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
-  th{text-align:right;color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.06em;
-    text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line);font-family:var(--sans);
-    position:sticky;top:0;background:var(--panel)}
+  th{text-align:right;color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    padding:8px 10px;border-bottom:1px solid var(--line);font-family:var(--sans);position:sticky;top:0;background:var(--panel)}
   th:first-child,td:first-child{text-align:left}
   td{padding:8px 10px;border-bottom:1px solid rgba(36,44,55,.5)}
   tbody tr:hover{background:var(--panel2)}
   .tablewrap{max-height:64vh;overflow:auto}
   /* tooltip */
-  #tip{position:fixed;pointer-events:none;background:#05070a;border:1px solid var(--line);
-    border-radius:8px;padding:7px 10px;font-family:var(--mono);font-size:12px;color:var(--ink);
-    opacity:0;transition:opacity .1s;z-index:50;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  #tip{position:fixed;pointer-events:none;background:#05070a;border:1px solid var(--line);border-radius:8px;
+    padding:7px 10px;font-family:var(--mono);font-size:12px;color:var(--ink);opacity:0;transition:opacity .1s;
+    z-index:50;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.5)}
   .axis{font-family:var(--mono);font-size:11px;fill:var(--faint)}
-  .barlabel{font-family:var(--mono);font-size:10.5px;fill:var(--muted)}
   footer{margin-top:50px;color:var(--faint);font-size:12.5px;text-align:center;line-height:1.7}
   @media(max-width:720px){
     .cards{grid-template-columns:repeat(2,1fr)}
@@ -123,6 +161,7 @@
     .verdict .net{margin-left:0;text-align:left}
     .wrap{padding:24px 14px 60px}
     .fcount{margin-left:0;width:100%}
+    .scope{margin-left:0}
   }
 </style>
 </head>
@@ -131,7 +170,7 @@
   <header>
     <p class="eyebrow">Бэктест · Аналитика</p>
     <h1>Прибыльна ли стратегия и когда она работала</h1>
-    <p class="sub">Выгрузи из «Тестера стратегий» TradingView список сделок в CSV, перетащи сюда — и увидишь итог, кривую капитала, просадку и разбивку результата по дням недели, месяцам и годам. Файл обрабатывается прямо в браузере и сохраняется в нём: после обновления страницы анализ восстановится сам.</p>
+    <p class="sub">Выгрузи из «Тестера стратегий» TradingView список сделок в CSV, перетащи сюда — и увидишь итог, распределение, лонг/шорт, тепловые карты по времени и календарь результата. Файл обрабатывается прямо в браузере и сохраняется в нём: после обновления страницы анализ восстановится сам.</p>
   </header>
 
   <div class="drop" id="drop">
@@ -155,7 +194,6 @@
   </details>
 
   <div class="err" id="err"></div>
-
   <div id="results"></div>
 
   <footer>
@@ -218,21 +256,22 @@ function findPct(h){const prof=['p&l','pnl','profit','прибыл','п&l','пр
 function mapColumns(h){
   return {
     tradeNum:findCol(h,['trade #','trade#','сделк','номер сдел','trade number']),
-    type:findCol(h,['type','тип']),
+    type:findCol(h,['type','тип','signal','сигнал','direction','направл','side','сторон']),
     datetime:findCol(h,['date/time','date','time','дата','время']),
     pnlAbs:findCol(h,['net p&l','net pnl','profit','прибыл','п&l','пр/у','пр./у','pnl','п/у'],['%','cumul','совок','кумул','накоп','откл']),
     pnlPct:findPct(h),
-    cumAbs:findCol(h,['cumulative p&l','cumulative','совокуп','кумул','накоп'],['%']),
   };
 }
 const isExit=t=>{t=(t||'').toLowerCase();return t.includes('exit')||t.includes('close')||t.includes('выход')||t.includes('закры');};
-
-/* валюта из заголовка абсолютной прибыли (USDT, USD, BTC…) */
+function detectDir(s){ s=(s||'').toLowerCase();
+  if(/long|buy|длин|лонг|покуп/.test(s)) return 'long';
+  if(/short|sell|корот|шорт|прод/.test(s)) return 'short';
+  return null;
+}
 function detectUnit(h){
   const m=String(h||'').match(/\b(USDT|USDC|BUSD|USD|EUR|GBP|JPY|BTC|ETH)\b/i);
   return m?m[1].toUpperCase():'';
 }
-
 function buildTrades(rows,c){
   const out=[]; const g=(r,i)=>i>=0?r[i]:undefined;
   const hasAbsCol=c.pnlAbs>=0, hasPctCol=c.pnlPct>=0;
@@ -245,12 +284,13 @@ function buildTrades(rows,c){
       let ex=grp.find(r=>isExit(g(r,c.type)));
       if(!ex)ex=grp.find(r=>!isNaN(num(g(r,detectCol))));
       if(!ex)ex=grp[grp.length-1];
+      let dir=null; for(const r of grp){const d=detectDir(g(r,c.type)); if(d){dir=d;break;}}
       const p=pick(ex); const dt=parseDate(g(ex,c.datetime));
-      if(dt&&(!isNaN(p.pnlAbs)||!isNaN(p.pnlPct)))out.push({...p,date:dt});
+      if(dt&&(!isNaN(p.pnlAbs)||!isNaN(p.pnlPct)))out.push({...p,date:dt,dir});
     }
   } else {
     for(const r of rows){const p=pick(r); const dt=parseDate(g(r,c.datetime));
-      if(dt&&(!isNaN(p.pnlAbs)||!isNaN(p.pnlPct)))out.push({...p,date:dt});}
+      if(dt&&(!isNaN(p.pnlAbs)||!isNaN(p.pnlPct)))out.push({...p,date:dt,dir:detectDir(g(r,c.type))});}
   }
   out.sort((a,b)=>a.date-b.date);
   return {trades:out, hasAbs:out.some(t=>!isNaN(t.pnlAbs)), hasPct:out.some(t=>!isNaN(t.pnlPct))};
@@ -271,27 +311,29 @@ function compute(trades){
     wr:n?w/n*100:0,avg:n?net/n:0,avgW:w?gp/w:0,avgL:l?gl/l:0,
     maxW:isFinite(maxW)?maxW:0,maxL:isFinite(maxL)?maxL:0,maxDD,curve,bestWs,bestLs};
 }
-function groupBy(trades,keyFn,size){
-  const a=Array.from({length:size},()=>({sum:0,n:0,w:0}));
-  for(const t of trades){const k=keyFn(t.date); a[k].sum+=t.pnl; a[k].n++; if(t.pnl>=0)a[k].w++;}
-  return a;
-}
-function groupYears(trades){
-  const m=new Map();
-  for(const t of trades){const y=t.date.getFullYear(); if(!m.has(y))m.set(y,{sum:0,n:0,w:0,key:y}); const o=m.get(y);o.sum+=t.pnl;o.n++;if(t.pnl>=0)o.w++;}
-  return Array.from(m.values()).sort((a,b)=>a.key-b.key);
-}
 
 /* ===================== formatting ===================== */
 let UNIT='';
 const grp=n=>n.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});
 function money(n,sign){if(!isFinite(n))return '∞';const s=(sign&&n>0?'+':'')+grp(n);return s+(UNIT?' '+UNIT:'');}
+function kFmt(n){ if(!n)return '0'; const a=Math.abs(n);
+  const core=a>=1000?(a/1000).toFixed(1).replace(/\.0$/,'')+'k':Math.round(a).toString();
+  return (n>0?'+':'-')+core;
+}
 const cls=n=>n>=0?'pos':'neg';
 const WD=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 const MO=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 const dowKey=d=>(d.getDay()+6)%7;
+const weekOfMonth=d=>Math.floor((d.getDate()-1)/7);
+const DIMS={
+  dow:  {size:7, key:d=>dowKey(d),        label:k=>WD[k]},
+  month:{size:12,key:d=>d.getMonth(),     label:k=>MO[k]},
+  week: {size:6, key:d=>weekOfMonth(d),   label:k=>'Нед '+(k+1)},
+  year: {dynamic:true, key:d=>d.getFullYear(), label:k=>String(k)},
+  hour: {dynamic:true, key:d=>d.getHours(),    label:k=>k+':00'},
+};
 
-/* ===================== charts ===================== */
+/* ===================== equity chart ===================== */
 function equityChart(curve){
   const W=1000,H=320,pl=58,pr=20,pt=20,pb=28;
   const iw=W-pl-pr,ih=H-pt-pb,n=curve.length;
@@ -327,39 +369,6 @@ function equityChart(curve){
     <line id="eqcur" x1="0" y1="${pt}" x2="0" y2="${pt+ih}" stroke="var(--gold)" stroke-width="1" opacity="0"/>
   </svg>`;
 }
-function divergingBars(items,labels){
-  const n=items.length;
-  const W=Math.max(420,n*60),H=240,pt=24,pb=42;
-  const bw=W/n, ih=H-pt-pb, mid=pt+ih/2, halfPx=ih/2-6;
-  const maxAbs=Math.max(1,...items.map(d=>Math.abs(d.sum)));
-  let bars='';
-  for(let i=0;i<n;i++){const d=items[i];
-    const h=Math.abs(d.sum)/maxAbs*halfPx;
-    const x=i*bw+bw*0.18, w=bw*0.64;
-    const up=d.sum>=0;
-    const y=up?mid-h:mid;
-    const col=up?'var(--gain)':'var(--loss)';
-    const lbl=labels[i];
-    const valTxt=(d.sum>=0?'+':'')+Math.round(d.sum).toLocaleString('ru-RU');
-    bars+=`<rect class="bar" x="${x}" y="${y}" width="${w}" height="${Math.max(h,d.n?1:0)}" rx="3" fill="${col}" opacity="${d.n?0.92:0.18}"
-      data-l="${lbl}" data-v="${valTxt}" data-n="${d.n} сд. · ${d.n?Math.round(d.w/d.n*100):0}% прибыль."></rect>`;
-    if(d.n)bars+=`<text class="barlabel" x="${x+w/2}" y="${up?y-5:y+h+13}" text-anchor="middle" fill="${col}">${valTxt}</text>`;
-    bars+=`<text class="axis" x="${x+w/2}" y="${H-22}" text-anchor="middle">${lbl}</text>`;
-    bars+=`<text class="axis" x="${x+w/2}" y="${H-8}" text-anchor="middle" opacity=".7">${d.n||''}</text>`;
-  }
-  return `<svg viewBox="0 0 ${W} ${H}">
-    <line x1="0" y1="${mid}" x2="${W}" y2="${mid}" stroke="var(--line)" stroke-width="1.5"/>
-    ${bars}</svg>`;
-}
-function wireBars(root){
-  root.querySelectorAll('.bar').forEach(b=>{
-    b.addEventListener('mousemove',e=>{
-      tip.innerHTML=`<b>${b.dataset.l}</b> &nbsp; <span class="${b.dataset.v.startsWith('-')?'neg':'pos'}">${b.dataset.v}${UNIT?' '+UNIT:''}</span><br><span style="color:var(--muted)">${b.dataset.n}</span>`;
-      tip.style.opacity=1; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px';
-    });
-    b.addEventListener('mouseleave',()=>tip.style.opacity=0);
-  });
-}
 function wireEquity(curve,dates){
   const svg=$('#eqsvg'); if(!svg)return;
   const hit=$('#eqhit'),cur=$('#eqcur');
@@ -377,24 +386,134 @@ function wireEquity(curve,dates){
   hit.addEventListener('mouseleave',()=>{tip.style.opacity=0;cur.style.opacity=0;});
 }
 
+/* ===================== donut + long/short ===================== */
+function donut(wr){
+  const R=70,sw=15,C=2*Math.PI*R,cx=90,cy=90;
+  const win=Math.max(0,Math.min(1,wr/100));
+  const winLen=C*win, rest=C-winLen;
+  return `<div class="donutwrap"><svg viewBox="0 0 180 180" style="max-width:190px">
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--loss)" stroke-width="${sw}"/>
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--gain)" stroke-width="${sw}"
+      stroke-dasharray="${winLen} ${rest}" transform="rotate(-90 ${cx} ${cy})"/>
+    <text x="${cx}" y="${cy-2}" text-anchor="middle" font-family="${"var(--sans)"}" font-size="30" font-weight="700" fill="var(--ink)">${wr.toFixed(0)}%</text>
+    <text x="${cx}" y="${cy+20}" text-anchor="middle" font-family="${"var(--sans)"}" font-size="12" fill="var(--muted)">Win Rate</text>
+  </svg></div>`;
+}
+function distPanel(s){
+  return `<div class="panel">
+    <h2>Распределение сделок</h2>
+    ${donut(s.wr)}
+    <div class="distcards">
+      <div class="distcard win"><div class="dn">${s.w}</div><div class="dl">Прибыльных</div><div class="da pos">${money(s.avgW,true)} avg</div></div>
+      <div class="distcard lose"><div class="dn">${s.l}</div><div class="dl">Убыточных</div><div class="da neg">${money(s.avgL,true)} avg</div></div>
+    </div></div>`;
+}
+function dirStats(dual,f,mode){
+  const tr=filterDualEx(dual,f,[]);
+  const field=mode==='pct'?'pnlPct':'pnlAbs';
+  let lc=0,lw=0,lp=0,sc=0,sw=0,sp=0,has=false;
+  for(const t of tr){ if(!t.dir)continue; const v=t[field]; if(isNaN(v))continue;
+    has=true;
+    if(t.dir==='long'){lc++;if(v>=0)lw++;lp+=v;} else {sc++;if(v>=0)sw++;sp+=v;}
+  }
+  return {has,lc,lw,lp,sc,sw,sp};
+}
+function lsPanel(d){
+  if(!d.has) return '';
+  const tot=(d.lc+d.sc)||1, lpct=d.lc/tot*100;
+  const lwr=d.lc?d.lw/d.lc*100:0, swr=d.sc?d.sw/d.sc*100:0;
+  return `<div class="panel">
+    <h2>Лонг vs Шорт</h2>
+    <div class="lshead"><span>Лонг (${d.lc})</span><span>Шорт (${d.sc})</span></div>
+    <div class="lsbar"><div class="lsfill" style="width:${lpct.toFixed(1)}%"></div></div>
+    <div class="lsrows">
+      <div class="lsrow"><span>Лонг Win Rate</span><b>${lwr.toFixed(1)}%</b></div>
+      <div class="lsrow"><span>Шорт Win Rate</span><b>${swr.toFixed(1)}%</b></div>
+      <div class="lsrow"><span>Лонг P&L</span><b class="${cls(d.lp)}">${money(d.lp,true)}</b></div>
+      <div class="lsrow"><span>Шорт P&L</span><b class="${cls(d.sp)}">${money(d.sp,true)}</b></div>
+    </div></div>`;
+}
+
+/* ===================== pivot / heatmap ===================== */
+function dimKeys(dim,trades){
+  if(dim.dynamic) return [...new Set(trades.map(t=>dim.key(t.date)))].sort((a,b)=>a-b);
+  return Array.from({length:dim.size},(_,i)=>i);
+}
+function pivotData(trades,rowDim,colDim){
+  const rk=dimKeys(rowDim,trades), ck=dimKeys(colDim,trades);
+  const rI=new Map(rk.map((k,i)=>[k,i])), cI=new Map(ck.map((k,i)=>[k,i]));
+  const grid=rk.map(()=>ck.map(()=>({sum:0,n:0})));
+  for(const t of trades){const r=rI.get(rowDim.key(t.date)),c=cI.get(colDim.key(t.date));
+    if(r==null||c==null)continue; grid[r][c].sum+=t.pnl; grid[r][c].n++;}
+  const rowTot=rk.map((_,r)=>grid[r].reduce((a,c)=>({sum:a.sum+c.sum,n:a.n+c.n}),{sum:0,n:0}));
+  const colTot=ck.map((_,c)=>grid.reduce((a,row)=>({sum:a.sum+row[c].sum,n:a.n+row[c].n}),{sum:0,n:0}));
+  const grand=rowTot.reduce((a,x)=>({sum:a.sum+x.sum,n:a.n+x.n}),{sum:0,n:0});
+  return {rk,ck,grid,rowTot,colTot,grand};
+}
+function compactPivot(pv){
+  const keepR=pv.rowTot.map(x=>x.n>0), keepC=pv.colTot.map(x=>x.n>0);
+  return {
+    rk:pv.rk.filter((_,i)=>keepR[i]), ck:pv.ck.filter((_,i)=>keepC[i]),
+    grid:pv.grid.filter((_,i)=>keepR[i]).map(row=>row.filter((_,j)=>keepC[j])),
+    rowTot:pv.rowTot.filter((_,i)=>keepR[i]), colTot:pv.colTot.filter((_,i)=>keepC[i]), grand:pv.grand
+  };
+}
+function hcell(c,maxAbs,strong){
+  if(!c.n) return `<td class="hc empty">–</td>`;
+  const t=Math.min(1,Math.abs(c.sum)/(maxAbs||1));
+  const a=((strong?0.30:0.16)+(strong?0.60:0.66)*t).toFixed(3);
+  const rgb=c.sum>=0?'52,199,154':'236,106,90';
+  return `<td class="hc${strong?' tot':''}" style="background:rgba(${rgb},${a})" data-v="${money(c.sum,true)}" data-n="${c.n}">${kFmt(c.sum)}</td>`;
+}
+function renderPivot(trades,rowDim,colDim,opts){
+  opts=opts||{};
+  let pv=pivotData(trades,rowDim,colDim);
+  if(opts.compact)pv=compactPivot(pv);
+  if(!pv.rk.length||!pv.ck.length) return `<div class="empty">Нет данных для этого разреза.</div>`;
+  let maxAbs=1; pv.grid.forEach(r=>r.forEach(c=>{if(c.n)maxAbs=Math.max(maxAbs,Math.abs(c.sum));}));
+  const colHead=pv.ck.map(k=>`<th>${colDim.label(k)}</th>`).join('');
+  let rowsHtml='';
+  pv.rk.forEach((rk,ri)=>{
+    let cells=''; pv.ck.forEach((_,ci)=>cells+=hcell(pv.grid[ri][ci],maxAbs));
+    rowsHtml+=`<tr><th class="rowh">${rowDim.label(rk)}</th>${cells}${opts.totals?hcell(pv.rowTot[ri],maxAbs,true):''}</tr>`;
+  });
+  let footer='';
+  if(opts.totals){
+    let cells=''; pv.ck.forEach((_,ci)=>cells+=hcell(pv.colTot[ci],maxAbs,true));
+    footer=`<tr class="sigrow"><th class="rowh sigma">Σ</th>${cells}${hcell(pv.grand,maxAbs,true)}</tr>`;
+  }
+  return `<div class="heatwrap"><table class="heat">
+    <thead><tr><th></th>${colHead}${opts.totals?'<th class="sigma">Σ</th>':''}</tr></thead>
+    <tbody>${rowsHtml}${footer}</tbody></table></div>`;
+}
+function wireCells(root){
+  root.querySelectorAll('.hc[data-v]').forEach(td=>{
+    td.addEventListener('mousemove',e=>{
+      tip.innerHTML=`P&L: <b class="${td.dataset.v.startsWith('-')?'neg':'pos'}">${td.dataset.v}</b><br><span style="color:var(--muted)">${td.dataset.n} сд.</span>`;
+      tip.style.opacity=1;tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-10)+'px';
+    });
+    td.addEventListener('mouseleave',()=>tip.style.opacity=0);
+  });
+}
+
 /* ===================== state + filtering ===================== */
 let STATE=null;
 const LS_KEY='bt_analyzer_v1';
 const emptyFilters=()=>({year:'all',month:'all',dow:'all'});
-
-function filterDual(trades,f,except){
-  return trades.filter(t=>{
-    if(except!=='year'  && f.year!=='all'  && t.date.getFullYear()!==+f.year) return false;
-    if(except!=='month' && f.month!=='all' && t.date.getMonth()!==+f.month)    return false;
-    if(except!=='dow'   && f.dow!=='all'   && dowKey(t.date)!==+f.dow)         return false;
-    return true;
-  });
-}
-function project(dual,mode){
-  const field=mode==='pct'?'pnlPct':'pnlAbs';
-  return dual.filter(t=>!isNaN(t[field])).map(t=>({pnl:t[field],date:t.date}));
-}
-const sel=(dual,f,except,mode)=>project(filterDual(dual,f,except),mode);
+const CAL_VIEWS=[
+  {id:'dow_month', label:'День × Месяц',  row:'dow',  col:'month', except:['dow','month']},
+  {id:'week_month',label:'Неделя × Месяц',row:'week', col:'month', except:['month']},
+  {id:'month_year',label:'Месяц × Год',   row:'month',col:'year',  except:['month','year']},
+  {id:'dow_year',  label:'День × Год',    row:'dow',  col:'year',  except:['dow','year']},
+];
+function filterDualEx(trades,f,ex){ex=ex||[];return trades.filter(t=>{
+  if(!ex.includes('year')  && f.year!=='all'  && t.date.getFullYear()!==+f.year) return false;
+  if(!ex.includes('month') && f.month!=='all' && t.date.getMonth()!==+f.month)    return false;
+  if(!ex.includes('dow')   && f.dow!=='all'   && dowKey(t.date)!==+f.dow)         return false;
+  return true;});}
+function project(dual,mode){const field=mode==='pct'?'pnlPct':'pnlAbs';
+  return dual.filter(t=>!isNaN(t[field])).map(t=>({pnl:t[field],date:t.date}));}
+const selAll=(dual,f,mode)=>project(filterDualEx(dual,f,[]),mode);
 
 /* ===================== views ===================== */
 const intradayOf=tr=>tr.some(t=>t.date.getHours()!==0||t.date.getMinutes()!==0);
@@ -402,9 +521,9 @@ const fmtDate=(d,intra)=>d.toLocaleDateString('ru-RU')+(intra?' '+d.toLocaleTime
 function emptyMsg(){return `<div class="empty">Под выбранные фильтры нет сделок. Измени условия или сбрось фильтры.</div>`;}
 
 let _ovCurve=null,_ovDates=null;
-function viewOverview(){
+function viewAnalytics(){
   const {trades:DUAL,filters,mode}=STATE;
-  const tr=sel(DUAL,filters,null,mode);
+  const tr=selAll(DUAL,filters,mode);
   if(!tr.length){_ovCurve=null;return emptyMsg();}
   const s=compute(tr);
   _ovCurve=s.curve;
@@ -413,6 +532,8 @@ function viewOverview(){
   const win=s.net>=0;
   const period=fmtDate(tr[0].date,false)+' — '+fmtDate(tr[tr.length-1].date,false);
   const card=(l,v,x,c)=>`<div class="card"><div class="l">${l}</div><div class="v ${c||''}">${v}</div>${x?`<div class="x">${x}</div>`:''}</div>`;
+  const ls=lsPanel(dirStats(DUAL,filters,mode));
+  const distRow = ls ? `<div class="two">${distPanel(s)}${ls}</div>` : distPanel(s);
   return `
   <div class="verdict ${win?'win':'lose'}">
     <div class="dot"></div>
@@ -427,42 +548,62 @@ function viewOverview(){
     ${card('Профит-фактор',isFinite(s.pf)?s.pf.toFixed(2):'∞','прибыль ÷ убыток')}
     ${card('Макс. просадка',money(s.maxDD),'пик → дно',cls(s.maxDD||-1))}
     ${card('Средняя сделка',money(s.avg,true),'',cls(s.avg))}
-    ${card('Средний профит',money(s.avgW,true),`лучшая ${money(s.maxW,true)}`,'pos')}
-    ${card('Средний убыток',money(s.avgL,true),`худшая ${money(s.maxL,true)}`,'neg')}
     ${card('Серия побед',s.bestWs+' подряд','макс. серия','pos')}
     ${card('Серия убытков',s.bestLs+' подряд','макс. серия','neg')}
+    ${card('Лучшая сделка',money(s.maxW,true),'','pos')}
+    ${card('Худшая сделка',money(s.maxL,true),'','neg')}
   </div>
+  ${distRow}
   <div class="panel">
     <h2>Кривая капитала</h2>
     <p class="ph">Накопленный результат по сделкам в текущей выборке. Красным закрашена просадка от достигнутого пика.</p>
     ${equityChart(s.curve)}
   </div>`;
 }
-function wireOverview(){ if(_ovCurve)wireEquity(_ovCurve,_ovDates); }
+function wireAnalytics(){ if(_ovCurve)wireEquity(_ovCurve,_ovDates); }
 
 function viewBreakdown(){
-  const {trades:DUAL,filters,mode}=STATE;
-  if(!sel(DUAL,filters,null,mode).length) return emptyMsg();
-  const wd=groupBy(sel(DUAL,filters,'dow',mode), dowKey,7);
-  const mo=groupBy(sel(DUAL,filters,'month',mode), d=>d.getMonth(),12);
-  const yr=groupYears(sel(DUAL,filters,'year',mode));
-  const full=sel(DUAL,filters,null,mode);
-  const hr=intradayOf(full)?groupBy(full,d=>d.getHours(),24):null;
+  const {trades:DUAL,filters,mode,calView,years}=STATE;
+  if(!selAll(DUAL,filters,mode).length) return emptyMsg();
+
+  // P&L по времени входа: dow × hour (применяет year+month, не dow)
+  const heatTrades=project(filterDualEx(DUAL,filters,['dow']),mode);
+  let heatHtml;
+  if(intradayOf(heatTrades)){
+    heatHtml=renderPivot(heatTrades,DIMS.dow,DIMS.hour,{compact:true,totals:false})
+      +`<div class="legend">
+          <span class="sw"><span class="box" style="background:var(--loss)"></span>Убыток</span>
+          <span class="sw"><span class="box" style="background:var(--panel2)"></span>Нет сделок</span>
+          <span class="sw"><span class="box" style="background:var(--gain)"></span>Прибыль</span></div>`;
+  } else {
+    heatHtml=`<div class="empty">В файле только даты без времени — карта по часам входа недоступна.</div>`;
+  }
+
+  // Календарь-пивот
+  const view=CAL_VIEWS.find(v=>v.id===calView)||CAL_VIEWS[0];
+  const rowDim=DIMS[view.row], colDim=DIMS[view.col];
+  const pivTrades=project(filterDualEx(DUAL,filters,view.except),mode);
+  const showScope=!(view.row==='year'||view.col==='year');
+  const viewBtns=CAL_VIEWS.map(v=>`<button class="vbtn ${v.id===calView?'on':''}" data-view="${v.id}" type="button">${v.label}</button>`).join('');
+  const scopeBtns=showScope?`<div class="scope">
+      <button class="scbtn ${filters.year==='all'?'on':''}" data-scope="all" type="button">Все годы</button>
+      ${years.map(y=>`<button class="scbtn ${String(filters.year)===String(y)?'on':''}" data-scope="${y}" type="button">${y}</button>`).join('')}
+    </div>`:'';
+
   return `
-  <div class="two">
-    <div class="panel"><h2>По дням недели</h2>
-      <p class="ph">Сумма P&L · число сделок под осью. Учитывает фильтры года и месяца.</p>${divergingBars(wd,WD)}</div>
-    <div class="panel"><h2>По месяцам</h2>
-      <p class="ph">${filters.year!=='all'?'За '+filters.year+' год.':'Сводно за все годы.'} Учитывает фильтр дня недели.</p>${divergingBars(mo,MO)}</div>
-  </div>
-  <div class="panel"><h2>По годам</h2>
-    <p class="ph">Учитывает фильтры месяца и дня недели.</p>${yr.length?divergingBars(yr,yr.map(y=>y.key)):'<div class="empty">Нет данных.</div>'}</div>
-  ${hr?`<div class="panel"><h2>По часам входа в рынок</h2><p class="ph">Время локальное по данным файла.</p>${divergingBars(hr,Array.from({length:24},(_,i)=>i))}</div>`:''}`;
+  <div class="panel"><h2>P&L по времени входа</h2>
+    <p class="ph">Сумма результата по дню недели и часу входа в рынок. Учитывает фильтры года и месяца.</p>
+    ${heatHtml}</div>
+  <div class="panel"><h2>Интерактивный календарь</h2>
+    <p class="ph">Тепловая карта результата по разным разрезам. «Σ» — итоги по строке и столбцу.</p>
+    <div class="calbar"><div class="viewseg">${viewBtns}</div>${scopeBtns}</div>
+    <div class="legend"><span>Убыток</span><span class="gradbar"></span><span>Прибыль</span></div>
+    ${renderPivot(pivTrades,rowDim,colDim,{compact:false,totals:true})}</div>`;
 }
 
 function viewTrades(){
   const {trades:DUAL,filters,mode}=STATE;
-  const tr=sel(DUAL,filters,null,mode);
+  const tr=selAll(DUAL,filters,mode);
   if(!tr.length) return emptyMsg();
   const intra=intradayOf(tr);
   let eq=0; const rows=tr.map(t=>{eq+=t.pnl;return {t,eq};});
@@ -490,7 +631,7 @@ function render(scroll){
       <button class="seg-btn ${mode==='pct'?'on':''}" data-mode="pct" type="button">%</button>
     </div>`:'';
   const toolbar=`<div class="toolbar">
-    <div class="tabs">${tabBtn('overview','Обзор')}${tabBtn('breakdown','Разбивка')}${tabBtn('trades','Сделки')}</div>
+    <div class="tabs">${tabBtn('analytics','Аналитика')}${tabBtn('breakdown','Разбивка')}${tabBtn('trades','Сделки')}</div>
     <div class="toolright">${unitToggle}<button class="btn ghost" id="clearBtn" type="button" title="Забыть загруженный бэктест">Сбросить</button></div>
   </div>`;
 
@@ -499,7 +640,7 @@ function render(scroll){
   const monthOpts=opt('all','Все',filters.month)+MO.map((m,i)=>opt(i,m,filters.month)).join('');
   const dowOpts=opt('all','Все',filters.dow)+WD.map((d,i)=>opt(i,d,filters.dow)).join('');
   const total=project(DUAL,mode).length;
-  const shown=sel(DUAL,filters,null,mode).length;
+  const shown=selAll(DUAL,filters,mode).length;
   const active=filters.year!=='all'||filters.month!=='all'||filters.dow!=='all';
   const filterbar=`<div class="filterbar">
     <div class="fg"><label>Год</label><select class="sel" data-f="year">${yearOpts}</select></div>
@@ -509,7 +650,7 @@ function render(scroll){
     <span class="fcount">${active?`показано ${shown} из ${total} сделок`:`${total} сделок`}</span>
   </div>`;
 
-  const body = tab==='breakdown'?viewBreakdown() : tab==='trades'?viewTrades() : viewOverview();
+  const body = tab==='breakdown'?viewBreakdown() : tab==='trades'?viewTrades() : viewAnalytics();
 
   const res=$('#results');
   res.innerHTML=toolbar+filterbar+body;
@@ -520,9 +661,11 @@ function render(scroll){
   res.querySelectorAll('.sel').forEach(s=>s.addEventListener('change',()=>{STATE.filters[s.dataset.f]=s.value;render(false);}));
   const rf=$('#resetFilters'); if(rf)rf.addEventListener('click',()=>{STATE.filters=emptyFilters();render(false);});
   const cb=$('#clearBtn'); if(cb)cb.addEventListener('click',clearSaved);
+  res.querySelectorAll('.vbtn').forEach(b=>b.addEventListener('click',()=>{STATE.calView=b.dataset.view;render(false);}));
+  res.querySelectorAll('.scbtn').forEach(b=>b.addEventListener('click',()=>{STATE.filters.year=b.dataset.scope;render(false);}));
 
-  if(tab==='overview') wireOverview();
-  else if(tab==='breakdown') wireBars(res);
+  if(tab==='analytics') wireAnalytics();
+  else if(tab==='breakdown') wireCells(res);
 
   persist();
   if(scroll) res.scrollIntoView({behavior:'smooth',block:'start'});
@@ -533,7 +676,7 @@ function persist(){
   if(!STATE)return;
   try{
     if(STATE.raw && STATE.raw.length<4500000)
-      localStorage.setItem(LS_KEY,JSON.stringify({raw:STATE.raw,mode:STATE.mode,tab:STATE.tab,filters:STATE.filters}));
+      localStorage.setItem(LS_KEY,JSON.stringify({raw:STATE.raw,mode:STATE.mode,tab:STATE.tab,filters:STATE.filters,calView:STATE.calView}));
   }catch(_){}
 }
 function clearSaved(){
@@ -550,6 +693,7 @@ function restore(){
   if(!built||built.error)return;
   if(saved.mode && (saved.mode==='pct'?built.hasPct:built.hasAbs)) built.mode=saved.mode;
   if(saved.tab) built.tab=saved.tab;
+  if(saved.calView) built.calView=saved.calView;
   if(saved.filters) built.filters={...built.filters,...saved.filters};
   STATE=built;
   render(false);
@@ -562,14 +706,14 @@ function ingest(text){
   if(!rows.length)return {error:'В файле нет строк с данными.',headers};
   const cols=mapColumns(headers);
   if(cols.pnlAbs<0&&cols.pnlPct<0)
-    return {error:'Не нашёл столбец с прибылью по сделке. Похоже, это не «Список сделок» из TradingView, а другой отчёт. Выгрузи именно вкладку «Список сделок» → «Экспорт в CSV».',headers};
+    return {error:'Не нашёл столбец с прибылью по сделке. Похоже, это не «Список сделок» из TradingView. Выгрузи именно вкладку «Список сделок» → «Экспорт в CSV».',headers};
   if(cols.datetime<0)return {error:'Не нашёл столбец с датой/временем сделки.',headers};
   const {trades,hasAbs,hasPct}=buildTrades(rows,cols);
   if(!trades.length)return {error:'Не удалось собрать ни одной завершённой сделки из файла.',headers};
   const absUnit=cols.pnlAbs>=0?detectUnit(headers[cols.pnlAbs]):'';
   const years=[...new Set(trades.map(t=>t.date.getFullYear()))].sort((a,b)=>a-b);
   return {raw:text,trades,hasAbs,hasPct,absUnit,years,
-    mode:hasAbs?'abs':'pct',tab:'overview',filters:emptyFilters()};
+    mode:hasAbs?'abs':'pct',tab:'analytics',calView:'dow_month',filters:emptyFilters()};
 }
 function showError(msg,headers){
   const e=$('#err');
@@ -597,17 +741,19 @@ drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)readFile(f
 $('#demo').addEventListener('click',e=>{e.stopPropagation();
   let rng=42;const rnd=()=>{rng=(rng*1103515245+12345)&0x7fffffff;return rng/0x7fffffff;};
   let lines=['"Trade #","Type","Date/Time","Net P&L USDT","P&L %"'];
-  const start=new Date(2023,0,5),N=220;let tn=N;
+  const start=new Date(2023,0,5),N=240;let tn=N;
   for(let i=0;i<N;i++){
-    const d=new Date(start.getTime()+i*(1.6*24*3600*1000)+Math.floor(rnd()*8)*3600*1000);
+    const d=new Date(start.getTime()+i*(1.4*24*3600*1000)+Math.floor(rnd()*9)*3600*1000);
     const dow=(d.getDay()+6)%7; const mon=d.getMonth();
-    let edge=0.55; if(dow===0||dow===2)edge+=0.18; if(dow===4)edge-=0.18; if(mon>=9)edge+=0.1;
+    const isLong=rnd()<0.45;
+    let edge=isLong?0.42:0.6; if(dow===0||dow===2)edge+=0.15; if(dow===4)edge-=0.18; if(mon>=9)edge+=0.08;
     const winT=rnd()<edge;
     const pnl=winT?(8+rnd()*40):-(6+rnd()*28);
     const pct=pnl/4 + (rnd()-0.5)*1.2;
-    const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':00';
-    lines.push(`"${tn}","Exit Long","${iso}","${pnl.toFixed(2)}","${pct.toFixed(2)}"`);
-    lines.push(`"${tn}","Entry Long","${iso}","",""`); tn--;
+    const dirTxt=isLong?'Long':'Short';
+    const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(2+Math.floor(rnd()*17)).padStart(2,'0')+':00';
+    lines.push(`"${tn}","Exit ${dirTxt}","${iso}","${pnl.toFixed(2)}","${pct.toFixed(2)}"`);
+    lines.push(`"${tn}","Entry ${dirTxt}","${iso}","",""`); tn--;
   }
   handle(lines.join('\n'));
 });
