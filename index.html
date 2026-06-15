@@ -122,7 +122,7 @@
   .two .panel{margin-bottom:0}
   /* meta */
   .metahint{color:var(--faint);font-size:12px;margin:0 0 8px}
-  .metabar{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:22px}
+  .metabar{display:grid;grid-template-columns:2fr 1fr 1fr 1.3fr;gap:12px;margin-bottom:22px}
   .metf{display:flex;flex-direction:column;gap:5px}
   .metf label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
   .metainput{font-family:var(--sans);font-size:15px;font-weight:600;color:var(--ink);background:var(--panel);
@@ -489,11 +489,12 @@ const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(
 function metaPanel(m){
   const f=(k,label,ph)=>`<div class="metf"><label>${label}</label>
     <input class="metainput" data-m="${k}" type="text" value="${esc(m[k])}" placeholder="${ph}"></div>`;
-  return `<p class="metahint">Автоматически заполнено из имени файла — поправь, если нужно. Сохраняется вместе с бэктестом.</p>
+  return `<p class="metahint">Заполнено из имени файла / по данным — поправь, если нужно. Сохраняется вместе с бэктестом.</p>
     <div class="metabar">
       ${f('name','Стратегия','напр. RSI + EMA cross')}
       ${f('symbol','Монета / пара','напр. BTCUSDT')}
       ${f('tf','Таймфрейм','напр. 1H / 4H / 1D')}
+      ${f('tz','Часовой пояс данных','напр. UTC / МСК (UTC+3)')}
     </div>`;
 }
 function normTf(num,unit){
@@ -621,17 +622,20 @@ function filterDualEx(trades,f,ex){ex=ex||[];return trades.filter(t=>{
   return true;});}
 function project(dual,mode){const field=mode==='pct'?'pnlPct':mode==='bal'?'pnlBal':'pnlAbs';
   return dual.filter(t=>!isNaN(t[field])).map(t=>({pnl:t[field],date:t.date}));}
-/* пересчёт $ по сделкам из стартового баланса (компаундинг по % сделки) */
-function computeBal(dual,B){
+/* пересчёт $ по сделкам: режим реинвеста/фиксированной ставки и доля депозита */
+function computeBal(dual,B,balMode,fPct){
+  const f=Math.max(0,(fPct==null?100:fPct))/100;
   let eq=B;
   for(const t of dual){
     if(isNaN(t.pnlPct)){t.pnlBal=NaN;continue;}
-    const m=eq*(t.pnlPct/100); t.pnlBal=m; eq+=m;
+    const basis=(balMode==='fixed')? f*B : f*eq;   // fixed: всегда от старта; reinvest: от текущего
+    const m=basis*(t.pnlPct/100); t.pnlBal=m; eq+=m;
   }
 }
+function recomputeBal(){ if(+STATE.balance>0) computeBal(STATE.trades,+STATE.balance,STATE.balMode||'reinvest',STATE.balPct||100); }
 function setBalance(v){
   v=+v||0; STATE.balance=v>0?v:0;
-  if(STATE.balance>0){ computeBal(STATE.trades,STATE.balance); STATE.mode='bal'; }
+  if(STATE.balance>0){ recomputeBal(); STATE.mode='bal'; }
   else if(STATE.mode==='bal'){ STATE.mode=STATE.hasAbs?'abs':'pct'; }
   render(false);
 }
@@ -720,9 +724,11 @@ function viewBreakdown(){
       ${years.map(y=>`<button class="scbtn ${String(filters.year)===String(y)?'on':''}" data-scope="${y}" type="button">${y}</button>`).join('')}
     </div>`:'';
 
+  const tz=(STATE.meta&&STATE.meta.tz)?STATE.meta.tz:'';
+  const tzNote=`Время входа — в часовом поясе графика TradingView на момент выгрузки${tz?`: <b style="color:var(--ink)">${esc(tz)}</b>`:` (укажи его в поле «Часовой пояс данных» на вкладке «Аналитика»)`}. Менять пояс можно там же.`;
   return `
   <div class="panel"><h2>P&L по времени входа</h2>
-    <p class="ph">Сумма результата по дню недели и часу входа в рынок. Учитывает фильтры года и месяца.</p>
+    <p class="ph">Сумма результата по дню недели и часу входа в рынок. Учитывает фильтры года и месяца.<br>${tzNote}</p>
     ${heatHtml}</div>
   <div class="panel"><h2>Интерактивный календарь</h2>
     <p class="ph">Тепловая карта результата по разным разрезам. «Σ» — итоги по строке и столбцу.</p>
@@ -785,18 +791,45 @@ function compareChart(series){
     <line x1="${pl}" y1="${Y(0)}" x2="${W-pr}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 4" opacity=".6"/>
     ${xax}${paths}</svg>`;
 }
+function stepFn(pts){
+  const xs=pts.map(p=>+p.date), ys=pts.map(p=>p.val);
+  return t=>{let lo=0,hi=xs.length-1,r=-1;while(lo<=hi){const m=(lo+hi)>>1;if(xs[m]<=t){r=m;lo=m+1;}else hi=m-1;}return r<0?0:ys[r];};
+}
+const fmtSigned=(n,u)=>(n>=0?'+':'')+Math.round(n).toLocaleString('ru-RU')+(u?' '+u:'');
+function deltaPanel(A,B){
+  const a=A.st,b=B.st,u=a.unit||b.unit;
+  const dates=[...new Set([...a.pts.map(p=>+p.date),...b.pts.map(p=>+p.date)])].sort((x,y)=>x-y);
+  const fa=stepFn(a.pts),fb=stepFn(b.pts);
+  const dpts=dates.map(d=>({date:new Date(d),val:fa(d)-fb(d)}));
+  const pf=v=>isFinite(v)?v.toFixed(2):'∞';
+  const dpf=(isFinite(a.pf)&&isFinite(b.pf))?((a.pf-b.pf>=0?'+':'')+(a.pf-b.pf).toFixed(2)):'—';
+  return `<div class="panel">
+    <h2>Дельта: ${esc(A.name)} − ${esc(B.name)}</h2>
+    <p class="ph">Разница накопленной доходности во времени. Выше нуля — впереди «${esc(A.name)}».</p>
+    ${compareChart([{label:'Δ',color:'var(--gold)',pts:dpts}])}
+    <div class="tablewrap" style="margin-top:14px"><table class="cmptable">
+      <thead><tr><th>Метрика</th><th>${esc(A.name)}</th><th>${esc(B.name)}</th><th>Δ (A−B)</th></tr></thead>
+      <tbody>
+        <tr><td>Итог</td><td class="${cls(a.net)}">${fmtSigned(a.net,u)}</td><td class="${cls(b.net)}">${fmtSigned(b.net,u)}</td><td class="${a.net-b.net>=0?'pos':'neg'}">${fmtSigned(a.net-b.net,u)}</td></tr>
+        <tr><td>Винрейт</td><td>${a.wr.toFixed(1)}%</td><td>${b.wr.toFixed(1)}%</td><td class="${a.wr-b.wr>=0?'pos':'neg'}">${(a.wr-b.wr>=0?'+':'')+(a.wr-b.wr).toFixed(1)}%</td></tr>
+        <tr><td>Профит-фактор</td><td>${pf(a.pf)}</td><td>${pf(b.pf)}</td><td class="${(a.pf-b.pf)>=0?'pos':'neg'}">${dpf}</td></tr>
+        <tr><td>Макс. просадка</td><td class="neg">${fmtSigned(a.maxDD,u)}</td><td class="neg">${fmtSigned(b.maxDD,u)}</td><td class="${(a.maxDD-b.maxDD)>=0?'pos':'neg'}">${fmtSigned(a.maxDD-b.maxDD,u)}</td></tr>
+        <tr><td>Сделок</td><td>${a.n}</td><td>${b.n}</td><td>${(a.n-b.n>=0?'+':'')+(a.n-b.n)}</td></tr>
+      </tbody></table></div>
+  </div>`;
+}
 function viewCompare(lib){
   const items=lib.items;
   if(items.length<2) return `<div class="empty">Загрузи второй бэктест, чтобы было что сравнивать.</div>`;
   const want=(STATE.cmpSel&&STATE.cmpSel.length?STATE.cmpSel:items.map(i=>i.id)).filter(id=>items.some(i=>i.id===id));
   const sel=want.length?want:items.map(i=>i.id);
-  const series=[]; const rows=[];
+  const series=[]; const rows=[]; const selStats=[];
   let legend='';
   items.forEach((it,idx)=>{
     const st=recStats(it), color=PALETTE[idx%PALETTE.length], checked=sel.includes(it.id);
     const nm=(it.meta&&it.meta.name)||'Без названия';
     const sub=[it.meta&&it.meta.symbol,it.meta&&it.meta.tf].filter(Boolean).join(' · ');
-    if(st&&checked){series.push({label:nm,color,pts:st.pts});
+    if(st&&checked){series.push({label:nm,color,pts:st.pts}); selStats.push({name:nm,color,st});
       legend+=`<span class="lg"><span class="dotc" style="background:${color}"></span>${esc(nm)}</span>`;}
     const u=st&&st.unit?' '+st.unit:'';
     rows.push(`<tr>
@@ -810,6 +843,8 @@ function viewCompare(lib){
       <td>${st?st.period[0].toLocaleDateString('ru-RU')+' — '+st.period[1].toLocaleDateString('ru-RU'):'—'}</td>
     </tr>`);
   });
+  const deltaBlock = selStats.length===2 ? deltaPanel(selStats[0],selStats[1])
+    : `<div class="empty">Отметь ровно <b>две</b> стратегии, чтобы увидеть дельту между ними.</div>`;
   return `<div class="panel">
     <h2>Сравнение стратегий</h2>
     <p class="ph">Накопленная доходность каждого бэктеста (в % от сделок — честно при любом размере счёта). Галочками выбери, какие показать.</p>
@@ -821,10 +856,10 @@ function viewCompare(lib){
     <div class="tablewrap"><table class="cmptable">
       <thead><tr><th>Стратегия</th><th>Сделок</th><th>Винрейт</th><th>ПФ</th><th>Итог</th><th>Макс. просадка</th><th>Период</th></tr></thead>
       <tbody>${rows.join('')}</tbody></table></div>
-  </div>`;
+  </div>
+  ${deltaBlock}`;
 }
 function wireCompare(){}
-
 /* ===================== render ===================== */
 function render(scroll){
   const {trades:DUAL,hasAbs,hasPct,mode,absUnit,years,filters,tab}=STATE;
@@ -853,10 +888,17 @@ function render(scroll){
       <button class="chip" data-bal="500" type="button">500</button>
       <button class="chip" data-bal="1000" type="button">1000</button>
       ${+STATE.balance>0?`<button class="chip clear" data-bal="0" type="button">сброс</button>`:''}</div>` : '';
+  const bm=STATE.balMode||'reinvest';
+  const reinvestCtrl = (hasPct && +STATE.balance>0) ? `<div class="balctrl">
+      <span class="blbl">Режим</span>
+      <div class="seg"><button class="seg-btn ${bm==='reinvest'?'on':''}" data-bmode="reinvest" type="button">С реинвестом</button><button class="seg-btn ${bm==='fixed'?'on':''}" data-bmode="fixed" type="button">Фикс. ставка</button></div>
+      <span class="blbl">Доля депозита</span>
+      <input class="balinput" id="balpct" type="number" min="1" max="100" step="5" value="${STATE.balPct||100}" style="width:80px"><span class="cur">%</span>
+    </div>` : '';
   const toolbar=`${libBar}<div class="toolbar">
     <div class="tabs">${tabBtn('analytics','Аналитика')}${tabBtn('breakdown','Разбивка')}${tabBtn('trades','Сделки')}${cmpTab}</div>
     <div class="toolright">${unitToggle}<button class="btn ghost" id="clearBtn" type="button" title="Забыть загруженный бэктест">Сбросить</button></div>
-  </div>${balCtrl?`<div class="balrow">${balCtrl}</div>`:''}`;
+  </div>${(balCtrl||reinvestCtrl)?`<div class="balrow">${balCtrl}${reinvestCtrl}</div>`:''}`;
 
   const opt=(v,label,cur)=>`<option value="${v}" ${String(cur)===String(v)?'selected':''}>${label}</option>`;
   const yearOpts=opt('all','Все',filters.year)+years.map(y=>opt(y,y,filters.year)).join('');
@@ -883,7 +925,7 @@ function render(scroll){
   res.style.display='block';
 
   res.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{STATE.tab=b.dataset.tab;render(false);}));
-  res.querySelectorAll('.seg-btn').forEach(b=>b.addEventListener('click',()=>{STATE.mode=b.dataset.mode;render(false);}));
+  res.querySelectorAll('.seg-btn[data-mode]').forEach(b=>b.addEventListener('click',()=>{STATE.mode=b.dataset.mode;render(false);}));
   res.querySelectorAll('.sel[data-f]').forEach(s=>s.addEventListener('change',()=>{STATE.filters[s.dataset.f]=s.value;render(false);}));
   const rf=$('#resetFilters'); if(rf)rf.addEventListener('click',()=>{STATE.filters=emptyFilters();render(false);});
   const cb=$('#clearBtn'); if(cb)cb.addEventListener('click',clearSaved);
@@ -894,6 +936,8 @@ function render(scroll){
   res.querySelectorAll('.scbtn').forEach(b=>b.addEventListener('click',()=>{STATE.filters.year=b.dataset.scope;render(false);}));
   const bi=$('#balinput'); if(bi)bi.addEventListener('change',()=>setBalance(bi.value));
   res.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>setBalance(c.dataset.bal)));
+  res.querySelectorAll('.seg-btn[data-bmode]').forEach(b=>b.addEventListener('click',()=>{STATE.balMode=b.dataset.bmode;recomputeBal();render(false);}));
+  const bp=$('#balpct'); if(bp)bp.addEventListener('change',()=>{STATE.balPct=Math.max(1,Math.min(100,+bp.value||100));recomputeBal();render(false);});
   const lsel=$('#libsel'); if(lsel)lsel.addEventListener('change',()=>loadRecord(lsel.value));
   const dr=$('#delRec'); if(dr)dr.addEventListener('click',()=>deleteRecord(STATE.id));
   res.querySelectorAll('.cmpchk').forEach(ch=>ch.addEventListener('change',()=>{
@@ -927,7 +971,7 @@ function loadLib(){
   return lib;
 }
 function saveLib(lib){ try{localStorage.setItem(LS_LIB,JSON.stringify(lib));}catch(_){} }
-function viewOf(){return {mode:STATE.mode,tab:STATE.tab,calView:STATE.calView,filters:STATE.filters,balance:+STATE.balance||0};}
+function viewOf(){return {mode:STATE.mode,tab:STATE.tab,calView:STATE.calView,filters:STATE.filters,balance:+STATE.balance||0,balMode:STATE.balMode||'reinvest',balPct:STATE.balPct||100};}
 function persist(){
   if(!STATE||!STATE.id)return;
   const lib=loadLib();
@@ -938,18 +982,19 @@ function persist(){
 }
 function applyView(built,v){
   if(!v)return built;
+  built.balMode=v.balMode||'reinvest'; built.balPct=v.balPct||100;
   if(v.mode && (v.mode==='pct'?built.hasPct:v.mode==='bal'?(built.hasPct&&v.balance>0):built.hasAbs)) built.mode=v.mode;
   if(v.tab) built.tab=v.tab;
   if(v.calView) built.calView=v.calView;
   if(v.filters) built.filters={...built.filters,...v.filters};
-  if(v.balance>0){ built.balance=v.balance; computeBal(built.trades,v.balance); }
+  if(v.balance>0){ built.balance=v.balance; computeBal(built.trades,v.balance,built.balMode,built.balPct); }
   return built;
 }
 function loadRecord(id){
   const lib=loadLib();
   const it=lib.items.find(x=>x.id===id); if(!it)return;
   const built=ingest(it.raw); if(built.error)return;
-  built.id=it.id; if(it.meta)built.meta=it.meta;
+  built.id=it.id; if(it.meta)built.meta={...built.meta,...it.meta};
   applyView(built,it.view);
   STATE=built; lib.active=id; saveLib(lib);
   render(false);
@@ -988,7 +1033,8 @@ function ingest(text,filename){
   const years=[...new Set(trades.map(t=>t.date.getFullYear()))].sort((a,b)=>a-b);
   const meta=guessMeta(filename);
   if(!meta.tf) meta.tf=inferTf(rows,cols.datetime);
-  return {raw:text,trades,hasAbs,hasPct,absUnit,years,meta,balance:0,cmpSel:null,
+  if(!meta.tz) meta.tz='UTC+3';   // TradingView экспортирует время в часовом поясе графика; здесь — UTC+3
+  return {raw:text,trades,hasAbs,hasPct,absUnit,years,meta,balance:0,balMode:'reinvest',balPct:100,cmpSel:null,
     mode:hasAbs?'abs':'pct',tab:'analytics',calView:'dow_month',filters:emptyFilters()};
 }
 function showError(msg,headers){
@@ -1006,7 +1052,7 @@ function handle(text,filename){
   const id=uid();
   built.id=id;
   lib.items.push({id,raw:text,savedAt:Date.now(),meta:built.meta,
-    view:{mode:built.mode,tab:built.tab,calView:built.calView,filters:built.filters,balance:0}});
+    view:{mode:built.mode,tab:built.tab,calView:built.calView,filters:built.filters,balance:0,balMode:'reinvest',balPct:100}});
   lib.active=id; saveLib(lib);
   STATE=built;
   render(true);
