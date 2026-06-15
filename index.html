@@ -95,6 +95,15 @@
   .panel .ph{color:var(--muted);font-size:12.5px;margin:0 0 16px}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
   .two .panel{margin-bottom:0}
+  /* meta */
+  .metahint{color:var(--faint);font-size:12px;margin:0 0 8px}
+  .metabar{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:22px}
+  .metf{display:flex;flex-direction:column;gap:5px}
+  .metf label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .metainput{font-family:var(--sans);font-size:15px;font-weight:600;color:var(--ink);background:var(--panel);
+    border:1px solid var(--line);border-radius:10px;padding:11px 13px;width:100%}
+  .metainput:focus{outline:none;border-color:var(--gold)}
+  .metainput::placeholder{color:var(--faint);font-weight:400}
   .empty{background:var(--panel2);border:1px dashed var(--line);border-radius:12px;padding:34px 22px;text-align:center;color:var(--muted)}
   svg{display:block;width:100%;height:auto}
   .pos{color:var(--gain)} .neg{color:var(--loss)}
@@ -162,6 +171,7 @@
     .wrap{padding:24px 14px 60px}
     .fcount{margin-left:0;width:100%}
     .scope{margin-left:0}
+    .metabar{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -334,8 +344,8 @@ const DIMS={
 };
 
 /* ===================== equity chart ===================== */
-function equityChart(curve){
-  const W=1000,H=320,pl=58,pr=20,pt=20,pb=28;
+function equityChart(curve,dates){
+  const W=1000,H=330,pl=58,pr=20,pt=20,pb=40;
   const iw=W-pl-pr,ih=H-pt-pb,n=curve.length;
   const vals=curve.concat([0]); let lo=Math.min(...vals),hi=Math.max(...vals);
   if(lo===hi){lo-=1;hi+=1;} const pad=(hi-lo)*0.08; lo-=pad;hi+=pad;
@@ -355,11 +365,28 @@ function equityChart(curve){
     grid+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="var(--line)" stroke-width="1" opacity=".5"/>`+
           `<text class="axis" x="${pl-8}" y="${y+3}" text-anchor="end">${Math.round(v).toLocaleString('ru-RU')}</text>`;}
   const zeroY=Y(0); const last=curve[n-1];
+  // ось X с датами
+  let xax='';
+  if(dates&&dates.length===n&&n>0){
+    const spanDays=(dates[n-1]-dates[0])/86400000;
+    const fmt = spanDays>120 ? d=>d.toLocaleDateString('ru-RU',{month:'short',year:'2-digit'})
+              : spanDays>2   ? d=>d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short'})
+                             : d=>d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    const ticks=Math.max(2,Math.min(7,n));
+    for(let k=0;k<ticks;k++){
+      const i=ticks===1?0:Math.round(k/(ticks-1)*(n-1));
+      const x=X(i);
+      xax+=`<line x1="${x}" y1="${pt}" x2="${x}" y2="${pt+ih}" stroke="var(--line)" stroke-width="1" opacity=".22"/>`;
+      const anchor=k===0?'start':k===ticks-1?'end':'middle';
+      xax+=`<text class="axis" x="${x}" y="${pt+ih+20}" text-anchor="${anchor}">${fmt(dates[i])}</text>`;
+    }
+  }
   return `<svg viewBox="0 0 ${W} ${H}" id="eqsvg" data-n="${n}" data-pl="${pl}" data-iw="${iw}">
     <defs><linearGradient id="eqg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="var(--gold)" stop-opacity=".22"/>
       <stop offset="1" stop-color="var(--gold)" stop-opacity="0"/></linearGradient></defs>
     ${grid}
+    ${xax}
     <line x1="${pl}" y1="${zeroY}" x2="${W-pr}" y2="${zeroY}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 4" opacity=".6"/>
     <path d="${dd}" fill="var(--loss-soft)"/>
     <path d="${area}" fill="url(#eqg)"/>
@@ -432,6 +459,37 @@ function lsPanel(d){
       <div class="lsrow"><span>Лонг P&L</span><b class="${cls(d.lp)}">${money(d.lp,true)}</b></div>
       <div class="lsrow"><span>Шорт P&L</span><b class="${cls(d.sp)}">${money(d.sp,true)}</b></div>
     </div></div>`;
+}
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+function metaPanel(m){
+  const f=(k,label,ph)=>`<div class="metf"><label>${label}</label>
+    <input class="metainput" data-m="${k}" type="text" value="${esc(m[k])}" placeholder="${ph}"></div>`;
+  return `<p class="metahint">Автоматически заполнено из имени файла — поправь, если нужно. Сохраняется вместе с бэктестом.</p>
+    <div class="metabar">
+      ${f('name','Стратегия','напр. RSI + EMA cross')}
+      ${f('symbol','Монета / пара','напр. BTCUSDT')}
+      ${f('tf','Таймфрейм','напр. 1H / 4H / 1D')}
+    </div>`;
+}
+function normTf(num,unit){
+  num=+num; unit=(unit||'').toLowerCase();
+  if(/^(h|ч|hour)$/.test(unit)) return num+'H';
+  if(/^(d|day|д)$/.test(unit)) return num+'D';
+  if(/^(w|week|нед)$/.test(unit)) return num+'W';
+  if(/^(min|мин|m)$/.test(unit)) return (num%60===0&&num>=60)?(num/60)+'H':num+'m';
+  return num+(unit?unit.toUpperCase():'');
+}
+function guessMeta(fn){
+  const meta={name:'',symbol:'',tf:''};
+  if(!fn) return meta;
+  const base=fn.replace(/\.[a-z0-9]+$/i,'').replace(/_/g,' ').trim();
+  const sm=base.match(/\b([A-Z]{2,10}(?:USDT|USDC|USD|PERP|BTC|ETH)(?:\.P)?)\b/);
+  if(sm) meta.symbol=sm[1].toUpperCase();
+  const tm=base.match(/\b(\d{1,4})\s*(мин|min|hour|ч|нед|week|day|[mhHdDwW])\b/);
+  if(tm) meta.tf=normTf(tm[1],tm[2]);
+  else { const bm=base.match(/[, ]\s*(\d{1,4})\b/); if(bm) meta.tf=normTf(bm[1],'m'); }
+  if(base.length<=70) meta.name=base;
+  return meta;
 }
 
 /* ===================== pivot / heatmap ===================== */
@@ -529,12 +587,14 @@ function viewAnalytics(){
   _ovCurve=s.curve;
   const intra=intradayOf(tr);
   _ovDates=tr.map(t=>fmtDate(t.date,intra));
+  const dObjs=tr.map(t=>t.date);
   const win=s.net>=0;
   const period=fmtDate(tr[0].date,false)+' — '+fmtDate(tr[tr.length-1].date,false);
   const card=(l,v,x,c)=>`<div class="card"><div class="l">${l}</div><div class="v ${c||''}">${v}</div>${x?`<div class="x">${x}</div>`:''}</div>`;
   const ls=lsPanel(dirStats(DUAL,filters,mode));
   const distRow = ls ? `<div class="two">${distPanel(s)}${ls}</div>` : distPanel(s);
   return `
+  ${metaPanel(STATE.meta||{})}
   <div class="verdict ${win?'win':'lose'}">
     <div class="dot"></div>
     <div>
@@ -557,7 +617,7 @@ function viewAnalytics(){
   <div class="panel">
     <h2>Кривая капитала</h2>
     <p class="ph">Накопленный результат по сделкам в текущей выборке. Красным закрашена просадка от достигнутого пика.</p>
-    ${equityChart(s.curve)}
+    ${equityChart(s.curve,dObjs)}
   </div>`;
 }
 function wireAnalytics(){ if(_ovCurve)wireEquity(_ovCurve,_ovDates); }
@@ -661,6 +721,9 @@ function render(scroll){
   res.querySelectorAll('.sel').forEach(s=>s.addEventListener('change',()=>{STATE.filters[s.dataset.f]=s.value;render(false);}));
   const rf=$('#resetFilters'); if(rf)rf.addEventListener('click',()=>{STATE.filters=emptyFilters();render(false);});
   const cb=$('#clearBtn'); if(cb)cb.addEventListener('click',clearSaved);
+  res.querySelectorAll('.metainput').forEach(inp=>inp.addEventListener('input',()=>{
+    if(!STATE.meta)STATE.meta={}; STATE.meta[inp.dataset.m]=inp.value; persist();
+  }));
   res.querySelectorAll('.vbtn').forEach(b=>b.addEventListener('click',()=>{STATE.calView=b.dataset.view;render(false);}));
   res.querySelectorAll('.scbtn').forEach(b=>b.addEventListener('click',()=>{STATE.filters.year=b.dataset.scope;render(false);}));
 
@@ -676,7 +739,7 @@ function persist(){
   if(!STATE)return;
   try{
     if(STATE.raw && STATE.raw.length<4500000)
-      localStorage.setItem(LS_KEY,JSON.stringify({raw:STATE.raw,mode:STATE.mode,tab:STATE.tab,filters:STATE.filters,calView:STATE.calView}));
+      localStorage.setItem(LS_KEY,JSON.stringify({raw:STATE.raw,mode:STATE.mode,tab:STATE.tab,filters:STATE.filters,calView:STATE.calView,meta:STATE.meta}));
   }catch(_){}
 }
 function clearSaved(){
@@ -694,13 +757,14 @@ function restore(){
   if(saved.mode && (saved.mode==='pct'?built.hasPct:built.hasAbs)) built.mode=saved.mode;
   if(saved.tab) built.tab=saved.tab;
   if(saved.calView) built.calView=saved.calView;
+  if(saved.meta) built.meta=saved.meta;
   if(saved.filters) built.filters={...built.filters,...saved.filters};
   STATE=built;
   render(false);
 }
 
 /* ===================== ingest / file handling ===================== */
-function ingest(text){
+function ingest(text,filename){
   let parsed; try{parsed=parseCSV(text);}catch(_){return {error:'Не удалось прочитать файл как CSV.'};}
   const {headers,rows}=parsed;
   if(!rows.length)return {error:'В файле нет строк с данными.',headers};
@@ -712,7 +776,7 @@ function ingest(text){
   if(!trades.length)return {error:'Не удалось собрать ни одной завершённой сделки из файла.',headers};
   const absUnit=cols.pnlAbs>=0?detectUnit(headers[cols.pnlAbs]):'';
   const years=[...new Set(trades.map(t=>t.date.getFullYear()))].sort((a,b)=>a-b);
-  return {raw:text,trades,hasAbs,hasPct,absUnit,years,
+  return {raw:text,trades,hasAbs,hasPct,absUnit,years,meta:guessMeta(filename),
     mode:hasAbs?'abs':'pct',tab:'analytics',calView:'dow_month',filters:emptyFilters()};
 }
 function showError(msg,headers){
@@ -720,14 +784,14 @@ function showError(msg,headers){
   e.innerHTML=msg+(headers?`<br><br>Найдены столбцы: <code>${headers.map(h=>h||'∅').join(' · ')}</code>`:'');
   e.style.display='block'; $('#results').style.display='none';
 }
-function handle(text){
+function handle(text,filename){
   $('#err').style.display='none';
-  const built=ingest(text);
+  const built=ingest(text,filename);
   if(built.error)return showError(built.error,built.headers);
   STATE=built;
   render(true);
 }
-function readFile(f){const r=new FileReader();r.onload=e=>handle(e.target.result);r.onerror=()=>showError('Ошибка чтения файла.');r.readAsText(f,'utf-8');}
+function readFile(f){const r=new FileReader();r.onload=e=>handle(e.target.result,f.name);r.onerror=()=>showError('Ошибка чтения файла.');r.readAsText(f,'utf-8');}
 
 const drop=$('#drop'),file=$('#file');
 $('#pick').addEventListener('click',e=>{e.stopPropagation();file.click();});
@@ -755,7 +819,7 @@ $('#demo').addEventListener('click',e=>{e.stopPropagation();
     lines.push(`"${tn}","Exit ${dirTxt}","${iso}","${pnl.toFixed(2)}","${pct.toFixed(2)}"`);
     lines.push(`"${tn}","Entry ${dirTxt}","${iso}","",""`); tn--;
   }
-  handle(lines.join('\n'));
+  handle(lines.join('\n'),'RSI+EMA strategy, BTCUSDT, 60.csv');
 });
 
 /* восстановить сохранённый бэктест после обновления страницы */
