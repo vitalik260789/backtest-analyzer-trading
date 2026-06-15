@@ -474,21 +474,41 @@ function metaPanel(m){
 function normTf(num,unit){
   num=+num; unit=(unit||'').toLowerCase();
   if(/^(h|ч|hour)$/.test(unit)) return num+'H';
-  if(/^(d|day|д)$/.test(unit)) return num+'D';
+  if(/^(d|day|дн|д)$/.test(unit)) return num+'D';
   if(/^(w|week|нед)$/.test(unit)) return num+'W';
   if(/^(min|мин|m)$/.test(unit)) return (num%60===0&&num>=60)?(num/60)+'H':num+'m';
   return num+(unit?unit.toUpperCase():'');
 }
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){const t=a%b;a=b;b=t;}return a;}
+function tfLabel(min){
+  if(!min||min<=0||!isFinite(min)) return '';
+  if(min%10080===0) return (min/10080)+'W';
+  if(min%1440===0) return (min/1440)+'D';
+  if(min%60===0) return (min/60)+'H';
+  return min+'m';
+}
+/* таймфрейм по сетке времён сделок (НОД интервалов) — колонки ТФ в выгрузке нет */
+function inferTf(rows,dtCol){
+  if(dtCol<0) return '';
+  const set=new Set();
+  for(const r of rows){const d=parseDate(r[dtCol]); if(d)set.add(Math.round(d.getTime()/60000));}
+  const ts=[...set].sort((a,b)=>a-b);
+  if(ts.length<2) return '';
+  let g=0; const base=ts[0];
+  for(const t of ts) g=gcd(g,t-base);
+  return tfLabel(g);
+}
 function guessMeta(fn){
   const meta={name:'',symbol:'',tf:''};
   if(!fn) return meta;
-  const base=fn.replace(/\.[a-z0-9]+$/i,'').replace(/_/g,' ').trim();
+  const base=fn.replace(/\.[a-z0-9]+$/i,'').replace(/_/g,' ').replace(/\s+/g,' ').trim();
   const sm=base.match(/\b([A-Z]{2,10}(?:USDT|USDC|USD|PERP|BTC|ETH)(?:\.P)?)\b/);
   if(sm) meta.symbol=sm[1].toUpperCase();
-  const tm=base.match(/\b(\d{1,4})\s*(мин|min|hour|ч|нед|week|day|[mhHdDwW])\b/);
+  // убираем даты, чтобы не принять год/число из даты за таймфрейм; берём ТФ только при явной единице
+  const noDate=base.replace(/\d{4}-\d{1,2}-\d{1,2}/g,' ').replace(/\d{1,2}[.\/]\d{1,2}[.\/]\d{2,4}/g,' ');
+  const tm=noDate.match(/\b(\d{1,4})\s*(мин|min|hour|нед|week|day|дн|ч|[mhHdDwW])\b/);
   if(tm) meta.tf=normTf(tm[1],tm[2]);
-  else { const bm=base.match(/[, ]\s*(\d{1,4})\b/); if(bm) meta.tf=normTf(bm[1],'m'); }
-  if(base.length<=70) meta.name=base;
+  if(base.length<=80) meta.name=base;
   return meta;
 }
 
@@ -776,7 +796,9 @@ function ingest(text,filename){
   if(!trades.length)return {error:'Не удалось собрать ни одной завершённой сделки из файла.',headers};
   const absUnit=cols.pnlAbs>=0?detectUnit(headers[cols.pnlAbs]):'';
   const years=[...new Set(trades.map(t=>t.date.getFullYear()))].sort((a,b)=>a-b);
-  return {raw:text,trades,hasAbs,hasPct,absUnit,years,meta:guessMeta(filename),
+  const meta=guessMeta(filename);
+  if(!meta.tf) meta.tf=inferTf(rows,cols.datetime);
+  return {raw:text,trades,hasAbs,hasPct,absUnit,years,meta,
     mode:hasAbs?'abs':'pct',tab:'analytics',calView:'dow_month',filters:emptyFilters()};
 }
 function showError(msg,headers){
