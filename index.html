@@ -21,7 +21,6 @@
     background-image:radial-gradient(1200px 600px at 80% -10%,rgba(216,178,95,.05),transparent 60%);}
   .wrap{max-width:1100px;margin:0 auto;padding:32px 20px 80px}
   a{color:var(--gold)}
-  /* header */
   header h1{font-size:26px;font-weight:650;letter-spacing:-.02em;margin:0 0 6px}
   header .sub{color:var(--muted);max-width:62ch;margin:0}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
@@ -38,6 +37,7 @@
   .btn:hover{border-color:var(--gold);color:var(--gold)}
   .btn.primary{background:var(--gold);color:#1a1407;border-color:var(--gold);font-weight:600}
   .btn.primary:hover{filter:brightness(1.08);color:#1a1407}
+  .btn.ghost{padding:6px 12px;font-size:13px}
   input[type=file]{display:none}
   .hint{margin-top:14px;font-size:13px;color:var(--faint)}
   .hint summary{cursor:pointer;color:var(--muted)}
@@ -47,15 +47,32 @@
     padding:14px 16px;border-radius:10px;font-size:14px;display:none}
   .err code{font-family:var(--mono);font-size:12px;color:var(--muted)}
   /* results */
-  #results{display:none;margin-top:34px}
-  /* unit toggle */
-  .unitbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-bottom:14px}
-  .unitbar .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  #results{display:none;margin-top:30px}
+  /* toolbar: tabs + unit toggle + reset */
+  .toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);margin-bottom:18px}
+  .tabs{display:inline-flex;gap:2px}
+  .tab{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--muted);background:transparent;border:0;
+    padding:11px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:.15s;margin-bottom:-1px}
+  .tab:hover{color:var(--ink)}
+  .tab.on{color:var(--gold);border-bottom-color:var(--gold)}
+  .toolright{display:flex;align-items:center;gap:10px;padding-bottom:7px}
   .seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
   .seg-btn{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--muted);background:transparent;
-    border:0;padding:7px 18px;border-radius:7px;cursor:pointer;transition:.15s;min-width:62px}
+    border:0;padding:6px 16px;border-radius:7px;cursor:pointer;transition:.15s;min-width:58px}
   .seg-btn:hover{color:var(--ink)}
   .seg-btn.on{background:var(--gold);color:#1a1407}
+  /* filter bar */
+  .filterbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+  .fg{display:flex;align-items:center;gap:8px}
+  .fg label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .sel{font-family:var(--sans);font-size:13.5px;color:var(--ink);background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;padding:7px 30px 7px 11px;cursor:pointer;appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b94a3' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 10px center}
+  .sel:hover{border-color:var(--gold)}
+  .fcount{margin-left:auto;font-size:13px;color:var(--faint);font-family:var(--mono)}
+  /* verdict */
   .verdict{border-radius:14px;padding:22px 24px;border:1px solid var(--line);margin-bottom:24px;
     display:flex;align-items:center;gap:20px;flex-wrap:wrap}
   .verdict.win{background:linear-gradient(100deg,var(--gain-soft),transparent);border-color:rgba(52,199,154,.4)}
@@ -80,16 +97,19 @@
   .panel .ph{color:var(--muted);font-size:12.5px;margin:0 0 16px}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
   .two .panel{margin-bottom:0}
+  .empty{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:48px 22px;
+    text-align:center;color:var(--muted)}
   svg{display:block;width:100%;height:auto}
   .pos{color:var(--gain)} .neg{color:var(--loss)}
   /* table */
   table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
   th{text-align:right;color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.06em;
-    text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line);font-family:var(--sans)}
+    text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line);font-family:var(--sans);
+    position:sticky;top:0;background:var(--panel)}
   th:first-child,td:first-child{text-align:left}
   td{padding:8px 10px;border-bottom:1px solid rgba(36,44,55,.5)}
   tbody tr:hover{background:var(--panel2)}
-  .tablewrap{max-height:420px;overflow:auto}
+  .tablewrap{max-height:64vh;overflow:auto}
   /* tooltip */
   #tip{position:fixed;pointer-events:none;background:#05070a;border:1px solid var(--line);
     border-radius:8px;padding:7px 10px;font-family:var(--mono);font-size:12px;color:var(--ink);
@@ -102,6 +122,7 @@
     .two{grid-template-columns:1fr}
     .verdict .net{margin-left:0;text-align:left}
     .wrap{padding:24px 14px 60px}
+    .fcount{margin-left:0;width:100%}
   }
 </style>
 </head>
@@ -110,7 +131,7 @@
   <header>
     <p class="eyebrow">Бэктест · Аналитика</p>
     <h1>Прибыльна ли стратегия и когда она работала</h1>
-    <p class="sub">Выгрузи из «Тестера стратегий» TradingView список сделок в CSV, перетащи сюда — и увидишь итог, кривую капитала, просадку и разбивку результата по дням недели, месяцам и годам. Файл обрабатывается прямо в браузере, никуда не загружается.</p>
+    <p class="sub">Выгрузи из «Тестера стратегий» TradingView список сделок в CSV, перетащи сюда — и увидишь итог, кривую капитала, просадку и разбивку результата по дням недели, месяцам и годам. Файл обрабатывается прямо в браузере и сохраняется в нём: после обновления страницы анализ восстановится сам.</p>
   </header>
 
   <div class="drop" id="drop">
@@ -138,8 +159,8 @@
   <div id="results"></div>
 
   <footer>
-    Инструмент считает по дате <b>закрытия</b> сделки. Прошлые результаты не гарантируют будущих.<br>
-    Работает офлайн — можно сохранить этот файл и открывать локально.
+    Инструмент считает по дате <b>закрытия</b> сделки. Загруженный бэктест хранится локально в твоём браузере.<br>
+    Прошлые результаты не гарантируют будущих. Работает офлайн — можно сохранить файл и открывать локально.
   </footer>
 </div>
 <div id="tip"></div>
@@ -149,7 +170,7 @@
 const $=s=>document.querySelector(s);
 const tip=$('#tip');
 
-/* ---------- parsing ---------- */
+/* ===================== parsing ===================== */
 function detectDelimiter(line){
   const c=(line.match(/,/g)||[]).length, s=(line.match(/;/g)||[]).length, t=(line.match(/\t/g)||[]).length;
   if(t>=c&&t>=s) return '\t'; if(s>c) return ';'; return ',';
@@ -206,7 +227,7 @@ function mapColumns(h){
 }
 const isExit=t=>{t=(t||'').toLowerCase();return t.includes('exit')||t.includes('close')||t.includes('выход')||t.includes('закры');};
 
-/* определить валюту из заголовка абсолютной прибыли (USDT, USD, BTC…) */
+/* валюта из заголовка абсолютной прибыли (USDT, USD, BTC…) */
 function detectUnit(h){
   const m=String(h||'').match(/\b(USDT|USDC|BUSD|USD|EUR|GBP|JPY|BTC|ETH)\b/i);
   return m?m[1].toUpperCase():'';
@@ -215,11 +236,8 @@ function detectUnit(h){
 function buildTrades(rows,c){
   const out=[]; const g=(r,i)=>i>=0?r[i]:undefined;
   const hasAbsCol=c.pnlAbs>=0, hasPctCol=c.pnlPct>=0;
-  const detectCol = hasAbsCol ? c.pnlAbs : c.pnlPct;   // по этому столбцу ищем строку выхода
-  const pick=r=>({
-    pnlAbs: hasAbsCol?num(g(r,c.pnlAbs)):NaN,
-    pnlPct: hasPctCol?num(g(r,c.pnlPct)):NaN,
-  });
+  const detectCol = hasAbsCol ? c.pnlAbs : c.pnlPct;
+  const pick=r=>({pnlAbs:hasAbsCol?num(g(r,c.pnlAbs)):NaN, pnlPct:hasPctCol?num(g(r,c.pnlPct)):NaN});
   if(c.tradeNum>=0){
     const groups=new Map();
     for(const r of rows){const k=g(r,c.tradeNum);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);}
@@ -228,19 +246,17 @@ function buildTrades(rows,c){
       if(!ex)ex=grp.find(r=>!isNaN(num(g(r,detectCol))));
       if(!ex)ex=grp[grp.length-1];
       const p=pick(ex); const dt=parseDate(g(ex,c.datetime));
-      if(dt&&(!isNaN(p.pnlAbs)||!isNaN(p.pnlPct)))out.push({...p,date:dt,cum:num(g(ex,c.cumAbs))});
+      if(dt&&(!isNaN(p.pnlAbs)||!isNaN(p.pnlPct)))out.push({...p,date:dt});
     }
   } else {
     for(const r of rows){const p=pick(r); const dt=parseDate(g(r,c.datetime));
-      if(dt&&(!isNaN(p.pnlAbs)||!isNaN(p.pnlPct)))out.push({...p,date:dt,cum:num(g(r,c.cumAbs))});}
+      if(dt&&(!isNaN(p.pnlAbs)||!isNaN(p.pnlPct)))out.push({...p,date:dt});}
   }
   out.sort((a,b)=>a.date-b.date);
-  const hasAbs=out.some(t=>!isNaN(t.pnlAbs));
-  const hasPct=out.some(t=>!isNaN(t.pnlPct));
-  return {trades:out,hasAbs,hasPct};
+  return {trades:out, hasAbs:out.some(t=>!isNaN(t.pnlAbs)), hasPct:out.some(t=>!isNaN(t.pnlPct))};
 }
 
-/* ---------- stats ---------- */
+/* ===================== stats ===================== */
 function compute(trades){
   let net=0,gp=0,gl=0,w=0,l=0,maxW=-Infinity,maxL=Infinity,ws=0,ls=0,bestWs=0,bestLs=0;
   let eq=0,peak=0,maxDD=0; const curve=[];
@@ -266,15 +282,16 @@ function groupYears(trades){
   return Array.from(m.values()).sort((a,b)=>a.key-b.key);
 }
 
-/* ---------- formatting ---------- */
+/* ===================== formatting ===================== */
 let UNIT='';
 const grp=n=>n.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});
 function money(n,sign){if(!isFinite(n))return '∞';const s=(sign&&n>0?'+':'')+grp(n);return s+(UNIT?' '+UNIT:'');}
 const cls=n=>n>=0?'pos':'neg';
 const WD=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 const MO=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+const dowKey=d=>(d.getDay()+6)%7;
 
-/* ---------- charts ---------- */
+/* ===================== charts ===================== */
 function equityChart(curve){
   const W=1000,H=320,pl=58,pr=20,pt=20,pb=28;
   const iw=W-pl-pr,ih=H-pt-pb,n=curve.length;
@@ -282,25 +299,20 @@ function equityChart(curve){
   if(lo===hi){lo-=1;hi+=1;} const pad=(hi-lo)*0.08; lo-=pad;hi+=pad;
   const X=i=>pl+(n<=1?iw/2:i/(n-1)*iw);
   const Y=v=>pt+ih-(v-lo)/(hi-lo)*ih;
-  // peak line for drawdown shading
   const peak=[];let pk=0;for(const v of curve){pk=Math.max(pk,v);peak.push(pk);}
   let area='M'+X(0)+' '+Y(curve[0]);
   for(let i=1;i<n;i++)area+=' L'+X(i)+' '+Y(curve[i]);
   let line=area;
   area+=' L'+X(n-1)+' '+Y(lo)+' L'+X(0)+' '+Y(lo)+' Z';
-  // drawdown band between peak and equity
   let dd='M'+X(0)+' '+Y(peak[0]);
   for(let i=1;i<n;i++)dd+=' L'+X(i)+' '+Y(peak[i]);
   for(let i=n-1;i>=0;i--)dd+=' L'+X(i)+' '+Y(curve[i]);
   dd+=' Z';
-  // gridlines
   let grid='';const steps=4;
   for(let s=0;s<=steps;s++){const v=lo+(hi-lo)*s/steps;const y=Y(v);
     grid+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="var(--line)" stroke-width="1" opacity=".5"/>`+
           `<text class="axis" x="${pl-8}" y="${y+3}" text-anchor="end">${Math.round(v).toLocaleString('ru-RU')}</text>`;}
-  const zeroY=Y(0);
-  const last=curve[n-1];
-  // hover points (invisible wide rects) – built as data on a single overlay
+  const zeroY=Y(0); const last=curve[n-1];
   return `<svg viewBox="0 0 ${W} ${H}" id="eqsvg" data-n="${n}" data-pl="${pl}" data-iw="${iw}">
     <defs><linearGradient id="eqg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="var(--gold)" stop-opacity=".22"/>
@@ -315,8 +327,7 @@ function equityChart(curve){
     <line id="eqcur" x1="0" y1="${pt}" x2="0" y2="${pt+ih}" stroke="var(--gold)" stroke-width="1" opacity="0"/>
   </svg>`;
 }
-
-function divergingBars(items,labels,fmtLabel){
+function divergingBars(items,labels){
   const n=items.length;
   const W=Math.max(420,n*60),H=240,pt=24,pb=42;
   const bw=W/n, ih=H-pt-pb, mid=pt+ih/2, halfPx=ih/2-6;
@@ -340,8 +351,6 @@ function divergingBars(items,labels,fmtLabel){
     <line x1="0" y1="${mid}" x2="${W}" y2="${mid}" stroke="var(--line)" stroke-width="1.5"/>
     ${bars}</svg>`;
 }
-
-/* tooltip wiring */
 function wireBars(root){
   root.querySelectorAll('.bar').forEach(b=>{
     b.addEventListener('mousemove',e=>{
@@ -368,55 +377,51 @@ function wireEquity(curve,dates){
   hit.addEventListener('mouseleave',()=>{tip.style.opacity=0;cur.style.opacity=0;});
 }
 
-/* ---------- state ---------- */
-let STATE=null;   // {trades, hasAbs, hasPct, mode:'abs'|'pct', absUnit}
+/* ===================== state + filtering ===================== */
+let STATE=null;
+const LS_KEY='bt_analyzer_v1';
+const emptyFilters=()=>({year:'all',month:'all',dow:'all'});
 
-function setMode(m){ if(!STATE||STATE.mode===m)return; STATE.mode=m; render(false); }
+function filterDual(trades,f,except){
+  return trades.filter(t=>{
+    if(except!=='year'  && f.year!=='all'  && t.date.getFullYear()!==+f.year) return false;
+    if(except!=='month' && f.month!=='all' && t.date.getMonth()!==+f.month)    return false;
+    if(except!=='dow'   && f.dow!=='all'   && dowKey(t.date)!==+f.dow)         return false;
+    return true;
+  });
+}
+function project(dual,mode){
+  const field=mode==='pct'?'pnlPct':'pnlAbs';
+  return dual.filter(t=>!isNaN(t[field])).map(t=>({pnl:t[field],date:t.date}));
+}
+const sel=(dual,f,except,mode)=>project(filterDual(dual,f,except),mode);
 
-/* ---------- render ---------- */
-function render(scroll){
-  const {trades:ALL,hasAbs,hasPct,mode,absUnit}=STATE;
-  const field = mode==='pct' ? 'pnlPct' : 'pnlAbs';
-  UNIT = mode==='pct' ? '%' : (absUnit||'');
-  // проекция сделок на выбранные единицы
-  const trades = ALL.filter(t=>!isNaN(t[field])).map(t=>({pnl:t[field],date:t.date,cum:t.cum}));
+/* ===================== views ===================== */
+const intradayOf=tr=>tr.some(t=>t.date.getHours()!==0||t.date.getMinutes()!==0);
+const fmtDate=(d,intra)=>d.toLocaleDateString('ru-RU')+(intra?' '+d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'');
+function emptyMsg(){return `<div class="empty">Под выбранные фильтры нет сделок. Измени условия или сбрось фильтры.</div>`;}
 
-  const s=compute(trades);
+let _ovCurve=null,_ovDates=null;
+function viewOverview(){
+  const {trades:DUAL,filters,mode}=STATE;
+  const tr=sel(DUAL,filters,null,mode);
+  if(!tr.length){_ovCurve=null;return emptyMsg();}
+  const s=compute(tr);
+  _ovCurve=s.curve;
+  const intra=intradayOf(tr);
+  _ovDates=tr.map(t=>fmtDate(t.date,intra));
   const win=s.net>=0;
-  const wd=groupBy(trades,d=>(d.getDay()+6)%7,7);     // Пн..Вс
-  const mo=groupBy(trades,d=>d.getMonth(),12);
-  const yr=groupYears(trades);
-  const intraday=trades.some(t=>t.date.getHours()!==0||t.date.getMinutes()!==0);
-  const hr=intraday?groupBy(trades,d=>d.getHours(),24):null;
-  const dates=trades.map(t=>t.date.toLocaleDateString('ru-RU')+' '+(intraday?t.date.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):''));
-
+  const period=fmtDate(tr[0].date,false)+' — '+fmtDate(tr[tr.length-1].date,false);
   const card=(l,v,x,c)=>`<div class="card"><div class="l">${l}</div><div class="v ${c||''}">${v}</div>${x?`<div class="x">${x}</div>`:''}</div>`;
-  const period=trades.length?trades[0].date.toLocaleDateString('ru-RU')+' — '+trades[trades.length-1].date.toLocaleDateString('ru-RU'):'';
-
-  // переключатель единиц — показываем только если доступны и USD, и %
-  const toggle = (hasAbs&&hasPct) ? `
-  <div class="unitbar">
-    <span class="lbl">Единицы</span>
-    <div class="seg" role="group" aria-label="Единицы результата">
-      <button class="seg-btn ${mode==='abs'?'on':''}" data-mode="abs" type="button">${absUnit||'USD'}</button>
-      <button class="seg-btn ${mode==='pct'?'on':''}" data-mode="pct" type="button">%</button>
-    </div>
-  </div>` : '';
-
-  let html=`
-  ${toggle}
+  return `
   <div class="verdict ${win?'win':'lose'}">
     <div class="dot"></div>
     <div>
       <div class="vtitle">${win?'Стратегия прибыльна на истории':'Стратегия убыточна на истории'}</div>
       <div class="vsub">${s.n} сделок · ${period} · профит-фактор ${isFinite(s.pf)?s.pf.toFixed(2):'∞'}</div>
     </div>
-    <div class="net">
-      <div class="l">Итог</div>
-      <div class="n ${cls(s.net)}">${money(s.net,true)}</div>
-    </div>
+    <div class="net"><div class="l">Итог</div><div class="n ${cls(s.net)}">${money(s.net,true)}</div></div>
   </div>
-
   <div class="cards">
     ${card('Винрейт',s.wr.toFixed(1)+'%',`${s.w} приб. / ${s.l} убыт.`)}
     ${card('Профит-фактор',isFinite(s.pf)?s.pf.toFixed(2):'∞','прибыль ÷ убыток')}
@@ -427,54 +432,145 @@ function render(scroll){
     ${card('Серия побед',s.bestWs+' подряд','макс. серия','pos')}
     ${card('Серия убытков',s.bestLs+' подряд','макс. серия','neg')}
   </div>
-
   <div class="panel">
     <h2>Кривая капитала</h2>
-    <p class="ph">Накопленный результат по сделкам. Красным закрашена просадка от достигнутого пика.</p>
+    <p class="ph">Накопленный результат по сделкам в текущей выборке. Красным закрашена просадка от достигнутого пика.</p>
     ${equityChart(s.curve)}
-  </div>
-
-  <div class="two">
-    <div class="panel">
-      <h2>По дням недели</h2>
-      <p class="ph">Сумма P&L · число сделок под осью.</p>
-      ${divergingBars(wd,WD)}
-    </div>
-    <div class="panel">
-      <h2>По месяцам года</h2>
-      <p class="ph">Сводно за все годы.</p>
-      ${divergingBars(mo,MO)}
-    </div>
-  </div>
-
-  <div class="panel">
-    <h2>По годам</h2>
-    <p class="ph">В какие годы стратегия зарабатывала.</p>
-    ${divergingBars(yr,yr.map(y=>y.key))}
-  </div>
-  ${hr?`<div class="panel"><h2>По часам входа в рынок</h2><p class="ph">Время локальное по данным файла.</p>${divergingBars(hr,Array.from({length:24},(_,i)=>i))}</div>`:''}
-
-  <div class="panel">
-    <h2>Сделки <span style="color:var(--faint);font-weight:400">(последние 50)</span></h2>
-    <div class="tablewrap">
-      <table><thead><tr><th>Дата закрытия</th><th>P&L</th><th>Капитал</th></tr></thead><tbody>
-      ${trades.slice(-50).reverse().map((t,i,arr)=>{
-        const eqAt=s.curve[trades.length-1-i];
-        return `<tr><td>${t.date.toLocaleDateString('ru-RU')}${intraday?' '+t.date.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):''}</td>
-          <td class="${cls(t.pnl)}">${money(t.pnl,true)}</td>
-          <td class="${cls(eqAt)}">${money(eqAt)}</td></tr>`;}).join('')}
-      </tbody></table>
-    </div>
   </div>`;
+}
+function wireOverview(){ if(_ovCurve)wireEquity(_ovCurve,_ovDates); }
 
-  const res=$('#results'); res.innerHTML=html; res.style.display='block';
-  res.querySelectorAll('.seg-btn').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
-  wireEquity(s.curve,dates);
-  wireBars(res);
-  if(scroll!==false) res.scrollIntoView({behavior:'smooth',block:'start'});
+function viewBreakdown(){
+  const {trades:DUAL,filters,mode}=STATE;
+  if(!sel(DUAL,filters,null,mode).length) return emptyMsg();
+  const wd=groupBy(sel(DUAL,filters,'dow',mode), dowKey,7);
+  const mo=groupBy(sel(DUAL,filters,'month',mode), d=>d.getMonth(),12);
+  const yr=groupYears(sel(DUAL,filters,'year',mode));
+  const full=sel(DUAL,filters,null,mode);
+  const hr=intradayOf(full)?groupBy(full,d=>d.getHours(),24):null;
+  return `
+  <div class="two">
+    <div class="panel"><h2>По дням недели</h2>
+      <p class="ph">Сумма P&L · число сделок под осью. Учитывает фильтры года и месяца.</p>${divergingBars(wd,WD)}</div>
+    <div class="panel"><h2>По месяцам</h2>
+      <p class="ph">${filters.year!=='all'?'За '+filters.year+' год.':'Сводно за все годы.'} Учитывает фильтр дня недели.</p>${divergingBars(mo,MO)}</div>
+  </div>
+  <div class="panel"><h2>По годам</h2>
+    <p class="ph">Учитывает фильтры месяца и дня недели.</p>${yr.length?divergingBars(yr,yr.map(y=>y.key)):'<div class="empty">Нет данных.</div>'}</div>
+  ${hr?`<div class="panel"><h2>По часам входа в рынок</h2><p class="ph">Время локальное по данным файла.</p>${divergingBars(hr,Array.from({length:24},(_,i)=>i))}</div>`:''}`;
 }
 
-/* ---------- file handling ---------- */
+function viewTrades(){
+  const {trades:DUAL,filters,mode}=STATE;
+  const tr=sel(DUAL,filters,null,mode);
+  if(!tr.length) return emptyMsg();
+  const intra=intradayOf(tr);
+  let eq=0; const rows=tr.map(t=>{eq+=t.pnl;return {t,eq};});
+  const body=rows.slice().reverse().map(({t,eq})=>`<tr>
+    <td>${fmtDate(t.date,intra)}</td>
+    <td class="${cls(t.pnl)}">${money(t.pnl,true)}</td>
+    <td class="${cls(eq)}">${money(eq)}</td></tr>`).join('');
+  return `<div class="panel">
+    <h2>Сделки <span style="color:var(--faint);font-weight:400">(${rows.length})</span></h2>
+    <p class="ph">Все сделки текущей выборки, новые сверху. «Капитал» — нарастающий итог по выборке.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Дата закрытия</th><th>P&L</th><th>Капитал</th></tr></thead>
+      <tbody>${body}</tbody></table></div></div>`;
+}
+
+/* ===================== render ===================== */
+function render(scroll){
+  const {trades:DUAL,hasAbs,hasPct,mode,absUnit,years,filters,tab}=STATE;
+  UNIT = mode==='pct' ? '%' : (absUnit||'');
+
+  const tabBtn=(id,label)=>`<button class="tab ${tab===id?'on':''}" data-tab="${id}" type="button">${label}</button>`;
+  const unitToggle=(hasAbs&&hasPct)?`
+    <div class="seg" role="group" aria-label="Единицы">
+      <button class="seg-btn ${mode==='abs'?'on':''}" data-mode="abs" type="button">${absUnit||'USD'}</button>
+      <button class="seg-btn ${mode==='pct'?'on':''}" data-mode="pct" type="button">%</button>
+    </div>`:'';
+  const toolbar=`<div class="toolbar">
+    <div class="tabs">${tabBtn('overview','Обзор')}${tabBtn('breakdown','Разбивка')}${tabBtn('trades','Сделки')}</div>
+    <div class="toolright">${unitToggle}<button class="btn ghost" id="clearBtn" type="button" title="Забыть загруженный бэктест">Сбросить</button></div>
+  </div>`;
+
+  const opt=(v,label,cur)=>`<option value="${v}" ${String(cur)===String(v)?'selected':''}>${label}</option>`;
+  const yearOpts=opt('all','Все',filters.year)+years.map(y=>opt(y,y,filters.year)).join('');
+  const monthOpts=opt('all','Все',filters.month)+MO.map((m,i)=>opt(i,m,filters.month)).join('');
+  const dowOpts=opt('all','Все',filters.dow)+WD.map((d,i)=>opt(i,d,filters.dow)).join('');
+  const total=project(DUAL,mode).length;
+  const shown=sel(DUAL,filters,null,mode).length;
+  const active=filters.year!=='all'||filters.month!=='all'||filters.dow!=='all';
+  const filterbar=`<div class="filterbar">
+    <div class="fg"><label>Год</label><select class="sel" data-f="year">${yearOpts}</select></div>
+    <div class="fg"><label>Месяц</label><select class="sel" data-f="month">${monthOpts}</select></div>
+    <div class="fg"><label>День недели</label><select class="sel" data-f="dow">${dowOpts}</select></div>
+    ${active?`<button class="btn ghost" id="resetFilters" type="button">Сбросить фильтры</button>`:''}
+    <span class="fcount">${active?`показано ${shown} из ${total} сделок`:`${total} сделок`}</span>
+  </div>`;
+
+  const body = tab==='breakdown'?viewBreakdown() : tab==='trades'?viewTrades() : viewOverview();
+
+  const res=$('#results');
+  res.innerHTML=toolbar+filterbar+body;
+  res.style.display='block';
+
+  res.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{STATE.tab=b.dataset.tab;render(false);}));
+  res.querySelectorAll('.seg-btn').forEach(b=>b.addEventListener('click',()=>{STATE.mode=b.dataset.mode;render(false);}));
+  res.querySelectorAll('.sel').forEach(s=>s.addEventListener('change',()=>{STATE.filters[s.dataset.f]=s.value;render(false);}));
+  const rf=$('#resetFilters'); if(rf)rf.addEventListener('click',()=>{STATE.filters=emptyFilters();render(false);});
+  const cb=$('#clearBtn'); if(cb)cb.addEventListener('click',clearSaved);
+
+  if(tab==='overview') wireOverview();
+  else if(tab==='breakdown') wireBars(res);
+
+  persist();
+  if(scroll) res.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ===================== persistence ===================== */
+function persist(){
+  if(!STATE)return;
+  try{
+    if(STATE.raw && STATE.raw.length<4500000)
+      localStorage.setItem(LS_KEY,JSON.stringify({raw:STATE.raw,mode:STATE.mode,tab:STATE.tab,filters:STATE.filters}));
+  }catch(_){}
+}
+function clearSaved(){
+  try{localStorage.removeItem(LS_KEY);}catch(_){}
+  STATE=null;
+  const res=$('#results'); res.style.display='none'; res.innerHTML='';
+  $('#err').style.display='none';
+  $('#drop').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function restore(){
+  let saved=null; try{saved=JSON.parse(localStorage.getItem(LS_KEY)||'null');}catch(_){}
+  if(!saved||!saved.raw)return;
+  const built=ingest(saved.raw);
+  if(!built||built.error)return;
+  if(saved.mode && (saved.mode==='pct'?built.hasPct:built.hasAbs)) built.mode=saved.mode;
+  if(saved.tab) built.tab=saved.tab;
+  if(saved.filters) built.filters={...built.filters,...saved.filters};
+  STATE=built;
+  render(false);
+}
+
+/* ===================== ingest / file handling ===================== */
+function ingest(text){
+  let parsed; try{parsed=parseCSV(text);}catch(_){return {error:'Не удалось прочитать файл как CSV.'};}
+  const {headers,rows}=parsed;
+  if(!rows.length)return {error:'В файле нет строк с данными.',headers};
+  const cols=mapColumns(headers);
+  if(cols.pnlAbs<0&&cols.pnlPct<0)
+    return {error:'Не нашёл столбец с прибылью по сделке. Похоже, это не «Список сделок» из TradingView, а другой отчёт. Выгрузи именно вкладку «Список сделок» → «Экспорт в CSV».',headers};
+  if(cols.datetime<0)return {error:'Не нашёл столбец с датой/временем сделки.',headers};
+  const {trades,hasAbs,hasPct}=buildTrades(rows,cols);
+  if(!trades.length)return {error:'Не удалось собрать ни одной завершённой сделки из файла.',headers};
+  const absUnit=cols.pnlAbs>=0?detectUnit(headers[cols.pnlAbs]):'';
+  const years=[...new Set(trades.map(t=>t.date.getFullYear()))].sort((a,b)=>a-b);
+  return {raw:text,trades,hasAbs,hasPct,absUnit,years,
+    mode:hasAbs?'abs':'pct',tab:'overview',filters:emptyFilters()};
+}
 function showError(msg,headers){
   const e=$('#err');
   e.innerHTML=msg+(headers?`<br><br>Найдены столбцы: <code>${headers.map(h=>h||'∅').join(' · ')}</code>`:'');
@@ -482,18 +578,9 @@ function showError(msg,headers){
 }
 function handle(text){
   $('#err').style.display='none';
-  let parsed; try{parsed=parseCSV(text);}catch(_){return showError('Не удалось прочитать файл как CSV.');}
-  const {headers,rows}=parsed;
-  if(!rows.length)return showError('В файле нет строк с данными.',headers);
-  const cols=mapColumns(headers);
-  if(cols.pnlAbs<0&&cols.pnlPct<0)
-    return showError('Не нашёл столбец с прибылью по сделке. Похоже, это не «Список сделок» из TradingView, а другой отчёт. Выгрузи именно вкладку «Список сделок» → «Экспорт в CSV».',headers);
-  if(cols.datetime<0)
-    return showError('Не нашёл столбец с датой/временем сделки.',headers);
-  const {trades,hasAbs,hasPct}=buildTrades(rows,cols);
-  if(!trades.length)return showError('Не удалось собрать ни одной завершённой сделки из файла.',headers);
-  const absUnit = cols.pnlAbs>=0 ? detectUnit(headers[cols.pnlAbs]) : '';
-  STATE={trades,hasAbs,hasPct,mode:hasAbs?'abs':'pct',absUnit};
+  const built=ingest(text);
+  if(built.error)return showError(built.error,built.headers);
+  STATE=built;
   render(true);
 }
 function readFile(f){const r=new FileReader();r.onload=e=>handle(e.target.result);r.onerror=()=>showError('Ошибка чтения файла.');r.readAsText(f,'utf-8');}
@@ -510,20 +597,23 @@ drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)readFile(f
 $('#demo').addEventListener('click',e=>{e.stopPropagation();
   let rng=42;const rnd=()=>{rng=(rng*1103515245+12345)&0x7fffffff;return rng/0x7fffffff;};
   let lines=['"Trade #","Type","Date/Time","Net P&L USDT","P&L %"'];
-  const start=new Date(2023,0,5),N=180;let tn=N;
+  const start=new Date(2023,0,5),N=220;let tn=N;
   for(let i=0;i<N;i++){
     const d=new Date(start.getTime()+i*(1.6*24*3600*1000)+Math.floor(rnd()*8)*3600*1000);
     const dow=(d.getDay()+6)%7; const mon=d.getMonth();
     let edge=0.55; if(dow===0||dow===2)edge+=0.18; if(dow===4)edge-=0.18; if(mon>=9)edge+=0.1;
     const winT=rnd()<edge;
     const pnl=winT?(8+rnd()*40):-(6+rnd()*28);
-    const pct=pnl/4 + (rnd()-0.5)*1.2;   // правдоподобный % к депозиту
+    const pct=pnl/4 + (rnd()-0.5)*1.2;
     const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':00';
     lines.push(`"${tn}","Exit Long","${iso}","${pnl.toFixed(2)}","${pct.toFixed(2)}"`);
     lines.push(`"${tn}","Entry Long","${iso}","",""`); tn--;
   }
   handle(lines.join('\n'));
 });
+
+/* восстановить сохранённый бэктест после обновления страницы */
+restore();
 </script>
 </body>
 </html>
