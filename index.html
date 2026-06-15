@@ -47,6 +47,31 @@
   .err code{font-family:var(--mono);font-size:12px;color:var(--muted)}
   /* results */
   #results{display:none;margin-top:30px}
+  /* library bar */
+  .libbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+  .libbar .liblbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .libbar .sel{min-width:240px;max-width:520px}
+  /* balance */
+  .balrow{margin-bottom:16px}
+  .balctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .balctrl .blbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .balctrl .cur{color:var(--muted);font-family:var(--mono)}
+  .balinput{font-family:var(--mono);font-size:14px;color:var(--ink);background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;padding:7px 11px;width:120px}
+  .balinput:focus{outline:none;border-color:var(--gold)}
+  .chip{font-family:var(--mono);font-size:12.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);
+    border-radius:7px;padding:6px 11px;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--gold);color:var(--gold)}
+  .chip.clear{color:var(--faint)}
+  /* compare */
+  .cmplegend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:8px;font-size:12.5px;color:var(--muted)}
+  .lg,.cmplab{display:inline-flex;align-items:center;gap:7px}
+  .dotc{width:11px;height:11px;border-radius:50%;display:inline-block;flex:none}
+  .cmplab{cursor:pointer}
+  .cmplab input{accent-color:var(--gold);width:15px;height:15px}
+  .cmpsub{color:var(--faint)}
+  table.cmptable td:first-child,table.cmptable th:first-child{min-width:220px}
   .toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
     border-bottom:1px solid var(--line);margin-bottom:18px}
   .tabs{display:inline-flex;gap:2px}
@@ -487,16 +512,21 @@ function tfLabel(min){
   if(min%60===0) return (min/60)+'H';
   return min+'m';
 }
-/* таймфрейм по сетке времён сделок (НОД интервалов) — колонки ТФ в выгрузке нет */
+/* таймфрейм по сетке времён сделок — устойчиво к редким "кривым" отметкам */
 function inferTf(rows,dtCol){
   if(dtCol<0) return '';
   const set=new Set();
   for(const r of rows){const d=parseDate(r[dtCol]); if(d)set.add(Math.round(d.getTime()/60000));}
   const ts=[...set].sort((a,b)=>a-b);
-  if(ts.length<2) return '';
-  let g=0; const base=ts[0];
-  for(const t of ts) g=gcd(g,t-base);
-  return tfLabel(g);
+  if(ts.length<3) return '';
+  const base=ts[0], offs=ts.map(t=>t-base);
+  const CAND=[1,2,3,5,10,15,30,45,60,90,120,180,240,360,480,720,1440,2880,4320,10080];
+  let best=0;
+  for(const T of CAND){
+    let ok=0; for(const o of offs) if(o%T===0) ok++;
+    if(ok/offs.length>=0.85) best=T;   // берём наибольший подходящий
+  }
+  return tfLabel(best);
 }
 function guessMeta(fn){
   const meta={name:'',symbol:'',tf:''};
@@ -589,8 +619,22 @@ function filterDualEx(trades,f,ex){ex=ex||[];return trades.filter(t=>{
   if(!ex.includes('month') && f.month!=='all' && t.date.getMonth()!==+f.month)    return false;
   if(!ex.includes('dow')   && f.dow!=='all'   && dowKey(t.date)!==+f.dow)         return false;
   return true;});}
-function project(dual,mode){const field=mode==='pct'?'pnlPct':'pnlAbs';
+function project(dual,mode){const field=mode==='pct'?'pnlPct':mode==='bal'?'pnlBal':'pnlAbs';
   return dual.filter(t=>!isNaN(t[field])).map(t=>({pnl:t[field],date:t.date}));}
+/* пересчёт $ по сделкам из стартового баланса (компаундинг по % сделки) */
+function computeBal(dual,B){
+  let eq=B;
+  for(const t of dual){
+    if(isNaN(t.pnlPct)){t.pnlBal=NaN;continue;}
+    const m=eq*(t.pnlPct/100); t.pnlBal=m; eq+=m;
+  }
+}
+function setBalance(v){
+  v=+v||0; STATE.balance=v>0?v:0;
+  if(STATE.balance>0){ computeBal(STATE.trades,STATE.balance); STATE.mode='bal'; }
+  else if(STATE.mode==='bal'){ STATE.mode=STATE.hasAbs?'abs':'pct'; }
+  render(false);
+}
 const selAll=(dual,f,mode)=>project(filterDualEx(dual,f,[]),mode);
 
 /* ===================== views ===================== */
@@ -613,6 +657,11 @@ function viewAnalytics(){
   const card=(l,v,x,c)=>`<div class="card"><div class="l">${l}</div><div class="v ${c||''}">${v}</div>${x?`<div class="x">${x}</div>`:''}</div>`;
   const ls=lsPanel(dirStats(DUAL,filters,mode));
   const distRow = ls ? `<div class="two">${distPanel(s)}${ls}</div>` : distPanel(s);
+  const B=+STATE.balance||0;
+  const balCards = (mode==='bal'&&B>0) ? `
+    ${card('Стартовый баланс',grp(B)+' $','')}
+    ${card('Итоговый баланс',grp(B+s.net)+' $','',cls(s.net))}
+    ${card('ROI',(s.net/B*100).toFixed(1)+'%','доходность',cls(s.net))}` : '';
   return `
   ${metaPanel(STATE.meta||{})}
   <div class="verdict ${win?'win':'lose'}">
@@ -624,6 +673,7 @@ function viewAnalytics(){
     <div class="net"><div class="l">Итог</div><div class="n ${cls(s.net)}">${money(s.net,true)}</div></div>
   </div>
   <div class="cards">
+    ${balCards}
     ${card('Винрейт',s.wr.toFixed(1)+'%',`${s.w} приб. / ${s.l} убыт.`)}
     ${card('Профит-фактор',isFinite(s.pf)?s.pf.toFixed(2):'∞','прибыль ÷ убыток')}
     ${card('Макс. просадка',money(s.maxDD),'пик → дно',cls(s.maxDD||-1))}
@@ -699,21 +749,114 @@ function viewTrades(){
       <tbody>${body}</tbody></table></div></div>`;
 }
 
+/* ===================== compare ===================== */
+const PALETTE=['#d8b25f','#34c79a','#5b9dd9','#ec6a5a','#b07cd6','#e0a458','#7bd3c4'];
+function recStats(item){
+  const ing=ingest(item.raw); if(ing.error)return null;
+  const field=ing.hasPct?'pnlPct':'pnlAbs';
+  const tr=ing.trades.filter(t=>!isNaN(t[field]));
+  if(!tr.length)return null;
+  let eq=0,peak=0,maxDD=0,w=0,gp=0,gl=0; const pts=[];
+  for(const t of tr){const v=t[field]; eq+=v; if(v>=0){w++;gp+=v;}else gl+=v;
+    peak=Math.max(peak,eq); maxDD=Math.min(maxDD,eq-peak); pts.push({date:t.date,val:eq});}
+  return {n:tr.length,wr:w/tr.length*100,pf:gl!==0?gp/Math.abs(gl):(gp>0?Infinity:0),
+    net:eq,maxDD,pts,unit:ing.hasPct?'%':(ing.absUnit||''),period:[tr[0].date,tr[tr.length-1].date]};
+}
+function compareChart(series){
+  const W=1000,H=340,pl=58,pr=20,pt=20,pb=40,iw=W-pl-pr,ih=H-pt-pb;
+  let minD=Infinity,maxD=-Infinity,lo=0,hi=0,any=false;
+  for(const s of series)for(const p of s.pts){any=true;minD=Math.min(minD,+p.date);maxD=Math.max(maxD,+p.date);lo=Math.min(lo,p.val);hi=Math.max(hi,p.val);}
+  if(!any)return '<div class="empty">Отметь хотя бы один бэктест.</div>';
+  if(lo===hi){lo-=1;hi+=1;} const padv=(hi-lo)*0.08; lo-=padv;hi+=padv;
+  const X=d=>pl+(maxD===minD?iw/2:(+d-minD)/(maxD-minD)*iw);
+  const Y=v=>pt+ih-(v-lo)/(hi-lo)*ih;
+  let grid='';for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);
+    grid+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="var(--line)" stroke-width="1" opacity=".4"/>`+
+      `<text class="axis" x="${pl-8}" y="${y+3}" text-anchor="end">${Math.round(v).toLocaleString('ru-RU')}</text>`;}
+  let xax='';for(let k=0;k<5;k++){const dt=minD+(maxD-minD)*k/4,x=pl+iw*k/4,
+    a=k===0?'start':k===4?'end':'middle';
+    xax+=`<text class="axis" x="${x}" y="${pt+ih+20}" text-anchor="${a}">${new Date(dt).toLocaleDateString('ru-RU',{month:'short',year:'2-digit'})}</text>`;}
+  let paths='';
+  for(const s of series){ if(!s.pts.length)continue;
+    let d='M'+X(s.pts[0].date)+' '+Y(s.pts[0].val);
+    for(let i=1;i<s.pts.length;i++)d+=' L'+X(s.pts[i].date)+' '+Y(s.pts[i].val);
+    paths+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" opacity=".95"/>`;}
+  return `<svg viewBox="0 0 ${W} ${H}">${grid}
+    <line x1="${pl}" y1="${Y(0)}" x2="${W-pr}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 4" opacity=".6"/>
+    ${xax}${paths}</svg>`;
+}
+function viewCompare(lib){
+  const items=lib.items;
+  if(items.length<2) return `<div class="empty">Загрузи второй бэктест, чтобы было что сравнивать.</div>`;
+  const want=(STATE.cmpSel&&STATE.cmpSel.length?STATE.cmpSel:items.map(i=>i.id)).filter(id=>items.some(i=>i.id===id));
+  const sel=want.length?want:items.map(i=>i.id);
+  const series=[]; const rows=[];
+  let legend='';
+  items.forEach((it,idx)=>{
+    const st=recStats(it), color=PALETTE[idx%PALETTE.length], checked=sel.includes(it.id);
+    const nm=(it.meta&&it.meta.name)||'Без названия';
+    const sub=[it.meta&&it.meta.symbol,it.meta&&it.meta.tf].filter(Boolean).join(' · ');
+    if(st&&checked){series.push({label:nm,color,pts:st.pts});
+      legend+=`<span class="lg"><span class="dotc" style="background:${color}"></span>${esc(nm)}</span>`;}
+    const u=st&&st.unit?' '+st.unit:'';
+    rows.push(`<tr>
+      <td><label class="cmplab"><input class="cmpchk" type="checkbox" value="${it.id}" ${checked?'checked':''}>
+        <span class="dotc" style="background:${checked?color:'var(--faint)'}"></span>${esc(nm)}${sub?` <span class="cmpsub">${esc(sub)}</span>`:''}</label></td>
+      <td>${st?st.n:'—'}</td>
+      <td>${st?st.wr.toFixed(1)+'%':'—'}</td>
+      <td>${st?(isFinite(st.pf)?st.pf.toFixed(2):'∞'):'—'}</td>
+      <td class="${st?cls(st.net):''}">${st?(st.net>=0?'+':'')+Math.round(st.net).toLocaleString('ru-RU')+u:'—'}</td>
+      <td class="neg">${st?Math.round(st.maxDD).toLocaleString('ru-RU')+u:'—'}</td>
+      <td>${st?st.period[0].toLocaleDateString('ru-RU')+' — '+st.period[1].toLocaleDateString('ru-RU'):'—'}</td>
+    </tr>`);
+  });
+  return `<div class="panel">
+    <h2>Сравнение стратегий</h2>
+    <p class="ph">Накопленная доходность каждого бэктеста (в % от сделок — честно при любом размере счёта). Галочками выбери, какие показать.</p>
+    ${compareChart(series)}
+    <div class="cmplegend">${legend}</div>
+  </div>
+  <div class="panel">
+    <h2>Метрики</h2>
+    <div class="tablewrap"><table class="cmptable">
+      <thead><tr><th>Стратегия</th><th>Сделок</th><th>Винрейт</th><th>ПФ</th><th>Итог</th><th>Макс. просадка</th><th>Период</th></tr></thead>
+      <tbody>${rows.join('')}</tbody></table></div>
+  </div>`;
+}
+function wireCompare(){}
+
 /* ===================== render ===================== */
 function render(scroll){
   const {trades:DUAL,hasAbs,hasPct,mode,absUnit,years,filters,tab}=STATE;
-  UNIT = mode==='pct' ? '%' : (absUnit||'');
+  UNIT = mode==='pct' ? '%' : mode==='bal' ? '$' : (absUnit||'');
+
+  const lib=loadLib();
+  const libBar = lib.items.length>1 ? `
+    <div class="libbar">
+      <span class="liblbl">Бэктест</span>
+      <select class="sel" id="libsel">${lib.items.map(it=>`<option value="${it.id}" ${it.id===STATE.id?'selected':''}>${esc((it.meta&&it.meta.name)||'Без названия')}${it.meta&&it.meta.symbol?' · '+esc(it.meta.symbol):''}${it.meta&&it.meta.tf?' · '+esc(it.meta.tf):''}</option>`).join('')}</select>
+      <button class="btn ghost" id="delRec" type="button" title="Убрать этот бэктест из истории">Удалить</button>
+      <span class="fcount">${lib.items.length} в истории</span>
+    </div>` : '';
 
   const tabBtn=(id,label)=>`<button class="tab ${tab===id?'on':''}" data-tab="${id}" type="button">${label}</button>`;
-  const unitToggle=(hasAbs&&hasPct)?`
-    <div class="seg" role="group" aria-label="Единицы">
-      <button class="seg-btn ${mode==='abs'?'on':''}" data-mode="abs" type="button">${absUnit||'USD'}</button>
-      <button class="seg-btn ${mode==='pct'?'on':''}" data-mode="pct" type="button">%</button>
-    </div>`:'';
-  const toolbar=`<div class="toolbar">
-    <div class="tabs">${tabBtn('analytics','Аналитика')}${tabBtn('breakdown','Разбивка')}${tabBtn('trades','Сделки')}</div>
+  const segs=[];
+  if(hasAbs) segs.push(`<button class="seg-btn ${mode==='abs'?'on':''}" data-mode="abs" type="button">${absUnit||'USD'}</button>`);
+  if(hasPct) segs.push(`<button class="seg-btn ${mode==='pct'?'on':''}" data-mode="pct" type="button">%</button>`);
+  if(hasPct && +STATE.balance>0) segs.push(`<button class="seg-btn ${mode==='bal'?'on':''}" data-mode="bal" type="button">$ от баланса</button>`);
+  const unitToggle = segs.length>1?`<div class="seg" role="group" aria-label="Единицы">${segs.join('')}</div>`:'';
+  const cmpTab = lib.items.length>1 ? tabBtn('compare','Сравнение') : '';
+  const balCtrl = hasPct ? `<div class="balctrl"><span class="blbl">Стартовый баланс</span>
+      <input class="balinput" id="balinput" type="number" min="0" step="50" value="${+STATE.balance>0?STATE.balance:''}" placeholder="напр. 1000">
+      <span class="cur">$</span>
+      <button class="chip" data-bal="100" type="button">100</button>
+      <button class="chip" data-bal="500" type="button">500</button>
+      <button class="chip" data-bal="1000" type="button">1000</button>
+      ${+STATE.balance>0?`<button class="chip clear" data-bal="0" type="button">сброс</button>`:''}</div>` : '';
+  const toolbar=`${libBar}<div class="toolbar">
+    <div class="tabs">${tabBtn('analytics','Аналитика')}${tabBtn('breakdown','Разбивка')}${tabBtn('trades','Сделки')}${cmpTab}</div>
     <div class="toolright">${unitToggle}<button class="btn ghost" id="clearBtn" type="button" title="Забыть загруженный бэктест">Сбросить</button></div>
-  </div>`;
+  </div>${balCtrl?`<div class="balrow">${balCtrl}</div>`:''}`;
 
   const opt=(v,label,cur)=>`<option value="${v}" ${String(cur)===String(v)?'selected':''}>${label}</option>`;
   const yearOpts=opt('all','Все',filters.year)+years.map(y=>opt(y,y,filters.year)).join('');
@@ -730,7 +873,10 @@ function render(scroll){
     <span class="fcount">${active?`показано ${shown} из ${total} сделок`:`${total} сделок`}</span>
   </div>`;
 
-  const body = tab==='breakdown'?viewBreakdown() : tab==='trades'?viewTrades() : viewAnalytics();
+  let activeTab=tab;
+  if(activeTab==='compare'&&lib.items.length<2) activeTab='analytics';
+  const body = activeTab==='breakdown'?viewBreakdown() : activeTab==='trades'?viewTrades()
+             : activeTab==='compare'?viewCompare(lib) : viewAnalytics();
 
   const res=$('#results');
   res.innerHTML=toolbar+filterbar+body;
@@ -738,7 +884,7 @@ function render(scroll){
 
   res.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{STATE.tab=b.dataset.tab;render(false);}));
   res.querySelectorAll('.seg-btn').forEach(b=>b.addEventListener('click',()=>{STATE.mode=b.dataset.mode;render(false);}));
-  res.querySelectorAll('.sel').forEach(s=>s.addEventListener('change',()=>{STATE.filters[s.dataset.f]=s.value;render(false);}));
+  res.querySelectorAll('.sel[data-f]').forEach(s=>s.addEventListener('change',()=>{STATE.filters[s.dataset.f]=s.value;render(false);}));
   const rf=$('#resetFilters'); if(rf)rf.addEventListener('click',()=>{STATE.filters=emptyFilters();render(false);});
   const cb=$('#clearBtn'); if(cb)cb.addEventListener('click',clearSaved);
   res.querySelectorAll('.metainput').forEach(inp=>inp.addEventListener('input',()=>{
@@ -746,41 +892,85 @@ function render(scroll){
   }));
   res.querySelectorAll('.vbtn').forEach(b=>b.addEventListener('click',()=>{STATE.calView=b.dataset.view;render(false);}));
   res.querySelectorAll('.scbtn').forEach(b=>b.addEventListener('click',()=>{STATE.filters.year=b.dataset.scope;render(false);}));
+  const bi=$('#balinput'); if(bi)bi.addEventListener('change',()=>setBalance(bi.value));
+  res.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>setBalance(c.dataset.bal)));
+  const lsel=$('#libsel'); if(lsel)lsel.addEventListener('change',()=>loadRecord(lsel.value));
+  const dr=$('#delRec'); if(dr)dr.addEventListener('click',()=>deleteRecord(STATE.id));
+  res.querySelectorAll('.cmpchk').forEach(ch=>ch.addEventListener('change',()=>{
+    STATE.cmpSel=[...res.querySelectorAll('.cmpchk:checked')].map(x=>x.value); render(false);
+  }));
 
-  if(tab==='analytics') wireAnalytics();
-  else if(tab==='breakdown') wireCells(res);
+  if(activeTab==='analytics') wireAnalytics();
+  else if(activeTab==='breakdown') wireCells(res);
+  else if(activeTab==='compare') wireCompare();
 
   persist();
   if(scroll) res.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-/* ===================== persistence ===================== */
+/* ===================== persistence (библиотека бэктестов) ===================== */
+const LS_LIB='bt_analyzer_lib_v1';
+const uid=()=>'bt_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function loadLib(){
+  let lib=null; try{lib=JSON.parse(localStorage.getItem(LS_LIB)||'null');}catch(_){}
+  if(!lib||!Array.isArray(lib.items)){
+    // миграция старого одиночного хранилища
+    let old=null; try{old=JSON.parse(localStorage.getItem(LS_KEY)||'null');}catch(_){}
+    if(old&&old.raw){
+      const id=uid();
+      lib={active:id,items:[{id,raw:old.raw,savedAt:Date.now(),
+        meta:old.meta||{name:'',symbol:'',tf:''},
+        view:{mode:old.mode,tab:old.tab,calView:old.calView,filters:old.filters,balance:0}}]};
+      try{localStorage.setItem(LS_LIB,JSON.stringify(lib));localStorage.removeItem(LS_KEY);}catch(_){}
+    } else lib={active:null,items:[]};
+  }
+  return lib;
+}
+function saveLib(lib){ try{localStorage.setItem(LS_LIB,JSON.stringify(lib));}catch(_){} }
+function viewOf(){return {mode:STATE.mode,tab:STATE.tab,calView:STATE.calView,filters:STATE.filters,balance:+STATE.balance||0};}
 function persist(){
-  if(!STATE)return;
-  try{
-    if(STATE.raw && STATE.raw.length<4500000)
-      localStorage.setItem(LS_KEY,JSON.stringify({raw:STATE.raw,mode:STATE.mode,tab:STATE.tab,filters:STATE.filters,calView:STATE.calView,meta:STATE.meta}));
-  }catch(_){}
+  if(!STATE||!STATE.id)return;
+  const lib=loadLib();
+  const it=lib.items.find(x=>x.id===STATE.id);
+  if(it){ it.meta=STATE.meta; it.view=viewOf(); if(STATE.raw&&STATE.raw.length<4500000)it.raw=STATE.raw; }
+  lib.active=STATE.id;
+  saveLib(lib);
+}
+function applyView(built,v){
+  if(!v)return built;
+  if(v.mode && (v.mode==='pct'?built.hasPct:v.mode==='bal'?(built.hasPct&&v.balance>0):built.hasAbs)) built.mode=v.mode;
+  if(v.tab) built.tab=v.tab;
+  if(v.calView) built.calView=v.calView;
+  if(v.filters) built.filters={...built.filters,...v.filters};
+  if(v.balance>0){ built.balance=v.balance; computeBal(built.trades,v.balance); }
+  return built;
+}
+function loadRecord(id){
+  const lib=loadLib();
+  const it=lib.items.find(x=>x.id===id); if(!it)return;
+  const built=ingest(it.raw); if(built.error)return;
+  built.id=it.id; if(it.meta)built.meta=it.meta;
+  applyView(built,it.view);
+  STATE=built; lib.active=id; saveLib(lib);
+  render(false);
+}
+function deleteRecord(id){
+  const lib=loadLib();
+  lib.items=lib.items.filter(x=>x.id!==id);
+  if(lib.items.length){ saveLib(lib); loadRecord(lib.items[lib.items.length-1].id); }
+  else { saveLib({active:null,items:[]}); clearSaved(); }
 }
 function clearSaved(){
-  try{localStorage.removeItem(LS_KEY);}catch(_){}
   STATE=null;
   const res=$('#results'); res.style.display='none'; res.innerHTML='';
   $('#err').style.display='none';
   $('#drop').scrollIntoView({behavior:'smooth',block:'center'});
 }
 function restore(){
-  let saved=null; try{saved=JSON.parse(localStorage.getItem(LS_KEY)||'null');}catch(_){}
-  if(!saved||!saved.raw)return;
-  const built=ingest(saved.raw);
-  if(!built||built.error)return;
-  if(saved.mode && (saved.mode==='pct'?built.hasPct:built.hasAbs)) built.mode=saved.mode;
-  if(saved.tab) built.tab=saved.tab;
-  if(saved.calView) built.calView=saved.calView;
-  if(saved.meta) built.meta=saved.meta;
-  if(saved.filters) built.filters={...built.filters,...saved.filters};
-  STATE=built;
-  render(false);
+  const lib=loadLib();
+  if(!lib.items.length)return;
+  const it=lib.items.find(x=>x.id===lib.active)||lib.items[lib.items.length-1];
+  loadRecord(it.id);
 }
 
 /* ===================== ingest / file handling ===================== */
@@ -798,18 +988,26 @@ function ingest(text,filename){
   const years=[...new Set(trades.map(t=>t.date.getFullYear()))].sort((a,b)=>a-b);
   const meta=guessMeta(filename);
   if(!meta.tf) meta.tf=inferTf(rows,cols.datetime);
-  return {raw:text,trades,hasAbs,hasPct,absUnit,years,meta,
+  return {raw:text,trades,hasAbs,hasPct,absUnit,years,meta,balance:0,cmpSel:null,
     mode:hasAbs?'abs':'pct',tab:'analytics',calView:'dow_month',filters:emptyFilters()};
 }
 function showError(msg,headers){
   const e=$('#err');
   e.innerHTML=msg+(headers?`<br><br>Найдены столбцы: <code>${headers.map(h=>h||'∅').join(' · ')}</code>`:'');
-  e.style.display='block'; $('#results').style.display='none';
+  e.style.display='block';
 }
 function handle(text,filename){
   $('#err').style.display='none';
   const built=ingest(text,filename);
   if(built.error)return showError(built.error,built.headers);
+  const lib=loadLib();
+  const dup=lib.items.find(x=>x.raw===text);   // не плодим точные дубли
+  if(dup){ loadRecord(dup.id); return; }
+  const id=uid();
+  built.id=id;
+  lib.items.push({id,raw:text,savedAt:Date.now(),meta:built.meta,
+    view:{mode:built.mode,tab:built.tab,calView:built.calView,filters:built.filters,balance:0}});
+  lib.active=id; saveLib(lib);
   STATE=built;
   render(true);
 }
